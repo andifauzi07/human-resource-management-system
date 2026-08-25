@@ -19,7 +19,7 @@ HRIS adalah demo sistem HRIS (manajemen karyawan, cuti, absensi geolocation, pay
 | Database | PostgreSQL | aktif |
 | Validasi | Zod v4 | aktif |
 | Logging | Pino | aktif |
-| Auth | JWT (access + refresh) | 🚧 rencana (belum ada middleware) |
+| Auth | JWT: access di memori FE (zustand) + refresh di httpOnly cookie (`Secure`,`SameSite=Lax`); bcryptjs; middleware `authGuard`/`rbacGuard` | **terimplementasi** (lihat `openspec/changes/add-auth`) |
 | Scheduled Jobs | Vercel Cron → API route | 🚧 rencana (pengganti `node-cron`) |
 | Deployment | Client & Server = 2 project Vercel terpisah, DB = Neon/Supabase Postgres | aktif (deploy via GitHub Actions) |
 
@@ -34,9 +34,9 @@ HRIS adalah demo sistem HRIS (manajemen karyawan, cuti, absensi geolocation, pay
 └─────────────────┘        JSON + JWT           └──────────────────┘
                                                           │
                              ┌────────────────────────────┼─────────────────────────┐
-                             ▼                            ▼                         ▼
-                      Auth Middleware 🚧          Business Logic            Drizzle ORM
-                      (RBAC Guard) 🚧             Services Layer                │
+                              ▼                            ▼                         ▼
+                       Auth Middleware           Business Logic            Drizzle ORM
+                  (authGuard / rbacGuard)        Services Layer                │
                                                                                 ▼
                                                                          PostgreSQL DB
 ```
@@ -52,9 +52,10 @@ src/
 │   ├── env.ts                  # dotenv-flow + validasi zod
 │   └── swagger.ts              # swagger-ui + swagger-autogen
 ├── routes/                     # <nama>.routes.ts
-├── controllers/                # <nama>.controller.ts
-├── middlewares/                # error-handler.ts, not-found-handler.ts
-├── utils/                      # logger (pino), api-error, api-response, async-handler, shutdown
+├── controllers/                # <nama>.controller.ts (tipis: validasi Zod + panggil service)
+├── services/                   # <nama>.service.ts (logika murni, tanpa req/res)
+├── middlewares/                # error-handler.ts, not-found-handler.ts, auth.middleware.ts
+├── utils/                      # logger (pino), api-error, api-response, async-handler, shutdown, auth
 ├── constants/status-codes.ts
 └── drizzle/
     ├── index.ts                # kumpulkan schema (export *)
@@ -62,7 +63,7 @@ src/
     └── migrations/             # hasil drizzle-kit generate
 ```
 
-> **Pola layering target:** Controller → Service → Repository. Saat ini baru `controllers/` + `routes/` flat; layer Service & Repository akan menyusul saat modul bisnis dibuat. Definisi tabel sudah di `drizzle/schemas/`.
+> **Pola layering (terterapkan sejak Auth):** `routes/` → `controllers/` (tipis, validasi Zod) → `services/` (logika murni) + `middlewares/` (`authGuard`/`rbacGuard`). Layer Repository akan menyusul saat modul bisnis dibuat. Definisi tabel sudah di `drizzle/schemas/`.
 
 Frontend direncanakan struktur berbasis fitur (feature-based):
 ```
@@ -80,7 +81,9 @@ src/
 
 Didefinisikan di `server/src/drizzle/schemas/*.schema.ts` (satu file per modul). Tabel saat ini baru `users` (seed awal); sisanya rencana:
 
-**users** — `id` (UUID PK), `email` (varchar unique), `password_hash` (varchar), `role` enum(`STAFF`,`HRD`), `employee_id` (UUID FK → employees.id, nullable), `created_at`.
+**users** — `id` (UUID PK), `email` (varchar unique), `password_hash` (varchar, bcryptjs), `role` enum(`STAFF`,`HRD`), `created_at`.
+
+> **Keputusan desain (2026-08-25):** kolom `employee_id` (FK → `employees.id`) **DITUNDA** ke modul Employee agar scope auth self-contained. Saat ini `users` tidak memiliki FK ke `employees`; relasi 1—1 ditambahkan saat tabel `employees` dibuat. PK seluruh tabel = `uuid` (bukan `integer` seperti stub awal yang sudah dibuang).
 
 Rencana relasi utama:
 - `employees`: `id`, `full_name`, `department_id` (FK), `position`, `base_salary`, `join_date`, `status` enum(`ACTIVE`,`INACTIVE`)
@@ -95,7 +98,9 @@ Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `d
 
 ---
 
-## 4. Desain RBAC 🚧 (belum diimplementasi)
+## 4. Desain RBAC (terimplementasi sejak Auth)
+
+**Strategi token (desain terkunci):** akses JWT disimpan di memori frontend (zustand) dan dikirim via header `Authorization: Bearer`; refresh JWT **hanya** di httpOnly cookie (`Secure`, `SameSite=Lax`) — tidak terbaca JavaScript (XSS-safe) dan tidak butuh penyimpanan di server (cocok Vercel serverless). Logout cukup menghapus cookie (stateless). Detail di `openspec/changes/add-auth`.
 
 | Resource | STAFF | HRD |
 |---|---|---|
@@ -110,9 +115,9 @@ Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `d
 | Lihat/generate slip gaji semua | ❌ | ✅ |
 | Kelola lokasi kantor | ❌ | ✅ |
 
-**Implementasi teknis (rencana):**
-- Middleware `auth.middleware.ts` (verifikasi JWT) + `rbac.middleware.ts` (array permission per endpoint), contoh: `router.get('/payroll/all', authGuard, rbacGuard(['HRD']), controller)`.
-- Kasus "lihat data sendiri" dicek juga di **service layer** (`req.user.employeeId === params.employeeId`), bukan hanya middleware.
+**Implementasi teknis:**
+- Middleware `auth.middleware.ts`: `authGuard` (verifikasi access JWT → `req.user = { sub, role }`) + `rbacGuard(roles)` (403 bila `req.user.role` tidak di whitelist). Contoh: `router.get('/payroll/all', authGuard, rbacGuard(['HRD']), controller)`.
+- Kasus "lihat data sendiri" dicek juga di **service layer** (`req.user.sub === resource.userId`), bukan hanya middleware.
 
 ---
 
@@ -139,10 +144,13 @@ Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `d
 ## 6. Daftar Endpoint API (Rencana)
 
 ```
-POST   /api/auth/login
-POST   /api/auth/refresh
-GET    /api/employees
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+GET    /api/v1/auth/me          (authGuard)
+POST   /api/v1/auth/logout      (authGuard)
 POST   /api/employees
+GET    /api/employees
 GET    /api/employees/:id
 PATCH  /api/employees/:id
 DELETE /api/employees/:id
@@ -161,15 +169,15 @@ POST   /api/payroll/generate
 GET    /api/office-locations
 POST   /api/office-locations
 ```
-Saat ini baru ada `GET /api/v1/health` (lihat `routes/health.routes.ts`).
+Saat ini sudah ada `GET /api/v1/health` dan seluruh endpoint `POST /api/v1/auth/*` (register/login/refresh/me/logout) — lihat `routes/auth.routes.ts`, `controllers/auth.controller.ts`, `services/auth.service.ts`, `middlewares/auth.middleware.ts`. Endpoint bisnis sisanya masih rencana.
 
 ---
 
 ## 7. Roadmap Implementasi (Saran Urutan)
 
 1. **Setup DB**: Drizzle schema lengkap + migrasi + seeder (`drizzle/schemas/`, `db:generate`, `db:migrate`).
-2. **Auth + RBAC** 🚧: login, JWT, middleware guard.
-3. **Modul Employee**: CRUD + halaman frontend.
+2. **Auth + RBAC**: **terimplementasi** (lihat `openspec/changes/add-auth`). Keputusan: token access di memori FE (zustand) + refresh di httpOnly cookie; bcryptjs; PK `uuid`; FK `users.employee_id` ditunda ke modul Employee. Auth menetapkan pola layering `routes → controller → service → middleware` untuk modul berikutnya.
+3. **Modul Employee**: CRUD + halaman frontend (di sini FK `employee_id` ke `users` dibuat).
 4. **Modul Attendance**: geolocation check-in/out.
 5. **Modul Leave**: request + approval.
 6. **Modul Overtime + Payroll** 🚧: Vercel Cron API route.

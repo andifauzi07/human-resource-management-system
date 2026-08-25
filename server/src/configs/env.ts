@@ -15,7 +15,23 @@ export const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
 
-  CORS_ORIGIN: z.string().optional()
+  CORS_ORIGIN: z.string({
+    message: "CORS_ORIGIN wajib diisi (origin spesifik, bukan *)"
+  }),
+
+  JWT_SECRET: z
+    .string({ message: "JWT_SECRET wajib diisi" })
+    .min(16, "JWT_SECRET minimal 16 karakter"),
+
+  REFRESH_SECRET: z
+    .string({ message: "REFRESH_SECRET wajib diisi" })
+    .min(16, "REFRESH_SECRET minimal 16 karakter"),
+
+  JWT_ACCESS_TOKEN_EXPIRES_IN: z.string().default("15m"),
+
+  JWT_REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
+
+  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(4).max(20).default(10)
 });
 
 export type Env = z.infer<typeof envSchema>;

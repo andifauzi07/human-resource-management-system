@@ -27,9 +27,11 @@ hris/
 │   │   │   ├── env.ts           # load + validasi env (dotenv-flow + zod)
 │   │   │   └── swagger.ts       # setup swagger-ui + swagger-autogen
 │   │   ├── routes/              # <nama>.routes.ts (flat — bukan modules/)
-│   │   ├── controllers/         # <nama>.controller.ts
-│   │   ├── middlewares/         # error-handler.ts, not-found-handler.ts
-│   │   ├── utils/               # logger (pino), api-error, api-response, async-handler, shutdown
+│   │   ├── controllers/         # <nama>.controller.ts (tipis, validasi Zod)
+│   │   ├── services/            # <nama>.service.ts (logika murni, tanpa req/res)
+│   │   ├── middlewares/         # error-handler.ts, not-found-handler.ts, auth.middleware.ts
+│   │   ├── utils/               # logger (pino), api-error, api-response, async-handler, shutdown, auth.ts
+│   │   ├── types/               # express.d.ts (augmentasi Request.user)
 │   │   ├── constants/           # status-codes.ts
 │   │   └── drizzle/
 │   │       ├── index.ts         # kumpulkan semua schema (export *)
@@ -54,14 +56,14 @@ hris/
 |---|---|---|
 | Frontend framework | React 19 + Vite 8 + TypeScript (ESM) | aktif |
 | Styling | Tailwind CSS v4 (plugin `@tailwindcss/vite`, CSS-based) | aktif |
-| State / data fetching (Zustand, TanStack Query) | — | rencana, belum di-install |
+| State / data fetching (Zustand, TanStack Query) | Zustand | aktif (auth store: `src/store/auth.store.ts`, API client: `src/lib/api.ts`) |
 | UI kit (Shadcn) | — | rencana |
 | Backend | Express 5 + TypeScript (ESM) | aktif |
 | ORM | Drizzle ORM (`node-postgres`) + `pg` | aktif |
 | Validasi input | Zod v4 | aktif |
 | Logging | Pino | aktif |
 | Dokumentasi API | swagger-autogen + swagger-ui-express | aktif |
-| Auth / RBAC (JWT, middleware guard) | — | rencana, belum diimplementasi |
+| Auth / RBAC (JWT, middleware guard) | bcryptjs + jsonwebtoken | **terimplementasi** (`routes/auth.routes.ts`, `services/auth.service.ts`, `middlewares/auth.middleware.ts`) |
 | Modul bisnis (employee/leave/attendance/payroll) | — | masih scaffold (`health` saja) |
 
 ## Catatan Penting (supaya tidak salah asumsi)

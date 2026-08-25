@@ -7,6 +7,7 @@ import { notFoundHandler } from "./middlewares/not-found-handler";
 import { errorHandler } from "./middlewares/error-handler";
 import { setupSwagger } from "./configs/swagger";
 import healthRoutes from "./routes/health.routes";
+import authRoutes from "./routes/auth.routes";
 
 import sourceMapSupport from "source-map-support";
 import env from "./configs/env";
@@ -18,7 +19,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
-    origin: env.CORS_ORIGIN || "*",
+    origin: env.CORS_ORIGIN.split(",").map(o => o.trim()),
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
     credentials: true
@@ -37,6 +38,7 @@ app.get("/", (req: Request, res: Response) => {
 });
 
 app.use("/api/v1/health", healthRoutes);
+app.use("/api/v1/auth", authRoutes);
 
 // Not found handler (should be after routes)
 app.use(notFoundHandler);

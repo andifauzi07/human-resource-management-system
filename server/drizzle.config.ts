@@ -6,6 +6,7 @@ export default defineConfig({
   out: "./src/drizzle/migrations",
   schema: "./src/drizzle/index.ts",
   dialect: "postgresql",
+  schemaFilter: ["public", "neon_auth"],
   dbCredentials: {
     url: env.DATABASE_URL!
   },

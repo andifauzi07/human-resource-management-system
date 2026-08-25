@@ -80,7 +80,7 @@ src/
 
 Didefinisikan di `server/src/drizzle/schemas/*.schema.ts` (satu file per modul). Tabel saat ini baru `users` (seed awal); sisanya rencana:
 
-**users** — `id` (UUID PK), `email` (varchar unique), `password_hash` (varchar), `role` enum(`STAFF`,`HRD`,`MANAGEMENT`), `employee_id` (UUID FK → employees.id, nullable), `created_at`.
+**users** — `id` (UUID PK), `email` (varchar unique), `password_hash` (varchar), `role` enum(`STAFF`,`HRD`), `employee_id` (UUID FK → employees.id, nullable), `created_at`.
 
 Rencana relasi utama:
 - `employees`: `id`, `full_name`, `department_id` (FK), `position`, `base_salary`, `join_date`, `status` enum(`ACTIVE`,`INACTIVE`)
@@ -91,27 +91,27 @@ Rencana relasi utama:
 - `overtime_records`: `id`, `employee_id` FK, `date`, `hours`, `hourly_rate_multiplier`, `calculated_amount`, `status`
 - `payroll`: `id`, `employee_id` FK, `period_month`, `period_year`, `base_salary`, `total_overtime`, `total_deduction`, `net_salary`, `generated_at`
 
-Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `departments 1—N employees`, `users 1—1 employees` (kecuali admin HRD/Management tanpa data pegawai).
+Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `departments 1—N employees`, `users 1—1 employees` (kecuali admin HRD tanpa data pegawai).
 
 ---
 
 ## 4. Desain RBAC 🚧 (belum diimplementasi)
 
-| Resource | STAFF | HRD | MANAGEMENT |
-|---|---|---|---|
-| Lihat profil sendiri | ✅ | ✅ | ✅ |
-| Lihat semua karyawan | ❌ | ✅ | ✅ (read-only) |
-| Tambah/edit/hapus karyawan | ❌ | ✅ | ❌ |
-| Ajukan cuti | ✅ (milik sendiri) | ✅ | ✅ |
-| Approve/reject cuti | ❌ | ✅ | ✅ |
-| Check-in/out presensi | ✅ | ✅ | ✅ |
-| Lihat presensi semua karyawan | ❌ | ✅ | ✅ |
-| Lihat slip gaji sendiri | ✅ | ✅ | ✅ |
-| Lihat/generate slip gaji semua | ❌ | ✅ | ✅ |
-| Kelola lokasi kantor | ❌ | ✅ | ❌ |
+| Resource | STAFF | HRD |
+|---|---|---|
+| Lihat profil sendiri | ✅ | ✅ |
+| Lihat semua karyawan | ❌ | ✅ |
+| Tambah/edit/hapus karyawan | ❌ | ✅ |
+| Ajukan cuti | ✅ (milik sendiri) | ✅ |
+| Approve/reject cuti | ❌ | ✅ |
+| Check-in/out presensi | ✅ | ✅ |
+| Lihat presensi semua karyawan | ❌ | ✅ |
+| Lihat slip gaji sendiri | ✅ | ✅ |
+| Lihat/generate slip gaji semua | ❌ | ✅ |
+| Kelola lokasi kantor | ❌ | ✅ |
 
 **Implementasi teknis (rencana):**
-- Middleware `auth.middleware.ts` (verifikasi JWT) + `rbac.middleware.ts` (array permission per endpoint), contoh: `router.get('/payroll/all', authGuard, rbacGuard(['HRD','MANAGEMENT']), controller)`.
+- Middleware `auth.middleware.ts` (verifikasi JWT) + `rbac.middleware.ts` (array permission per endpoint), contoh: `router.get('/payroll/all', authGuard, rbacGuard(['HRD']), controller)`.
 - Kasus "lihat data sendiri" dicek juga di **service layer** (`req.user.employeeId === params.employeeId`), bukan hanya middleware.
 
 ---
@@ -182,4 +182,4 @@ Saat ini baru ada `GET /api/v1/health` (lihat `routes/health.routes.ts`).
 
 - Jelaskan 1–2 keputusan arsitektur di README (mis. "Haversine bukan Google Maps API" → cost & simplicity).
 - Rekam GIF singkat per fitur utama.
-- Deploy live + sediakan akun demo (STAFF/HRD/MANAGEMENT) agar recruiter bisa coba langsung.
+- Deploy live + sediakan akun demo (STAFF/HRD) agar recruiter bisa coba langsung.

@@ -1,153 +1,82 @@
-# Struktur Proyek — NexaHR (Monolitik, Satu Repo)
+# Struktur Proyek — HRIS
 
 ## Pendekatan
-Satu repository, dua folder utama yang jelas terpisah: `client` (React 19 + Vite) dan `server` (Express 5 + Drizzle ORM). Bukan monorepo dengan workspace tooling — masing-masing folder adalah proyek Node ESM (`"type": "module"`) dengan `package.json` sendiri.
+Satu repository, dua folder terpisah: `client/` (React 19 + Vite) dan `server/` (Express 5 + Drizzle ORM). Bukan monorepo dengan workspace tooling — masing-masing folder adalah proyek Node ESM (`"type": "module"`) dengan `package.json` sendiri. Keduanya di-deploy sebagai **dua project Vercel terpisah** (root directory `client/` dan `server/`) dari repo yang sama.
 
-## Struktur Folder
+## Struktur Folder Aktual
 
 ```
-nexahr/
-├── client/                      # React 19 + Vite + TS — frontend
+hris/
+├── client/                      # React 19 + Vite + TS (ESM) — frontend
 │   ├── src/
-│   │   ├── features/
-│   │   │   ├── employees/
-│   │   │   ├── leave/
-│   │   │   ├── attendance/
-│   │   │   ├── payroll/
-│   │   │   └── auth/
-│   │   ├── components/ui/        # komponen shadcn
-│   │   ├── stores/                 # Zustand (state lintas-fitur, mis. auth session)
-│   │   ├── hooks/                  # custom hooks + TanStack Query
-│   │   └── lib/
-│   │       └── api.ts            # wrapper fetch ke backend
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── tailwind.config.ts
-│   ├── eslint.config.js          # flat config (ESLint 10)
-│   └── tsconfig.json
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   ├── index.css            # Tailwind CSS v4 via `@import "tailwindcss"`
+│   │   └── assets/
+│   ├── vite.config.ts           # plugin: @vitejs/plugin-react, @tailwindcss/vite
+│   ├── eslint.config.js         # flat config (ESLint 10)
+│   ├── tsconfig.json / tsconfig.app.json / tsconfig.node.json
+│   └── package.json
 │
-├── server/                       # Express 5 + TS (ESM) — backend
+├── server/                      # Express 5 + TS (ESM) — backend
 │   ├── src/
-│   │   ├── modules/
-│   │   │   ├── auth/
-│   │   │   ├── employees/
-│   │   │   ├── leave/
-│   │   │   ├── attendance/
-│   │   │   ├── payroll/
-│   │   │   └── overtime/
-│   │   │       ├── overtime.controller.ts
-│   │   │       ├── overtime.service.ts
-│   │   │       ├── overtime.repository.ts
-│   │   │       ├── overtime.routes.ts
-│   │   │       └── overtime.schema.ts     # Zod schema validasi input
-│   │   ├── middlewares/
-│   │   │   ├── auth.middleware.ts
-│   │   │   ├── rbac.middleware.ts
-│   │   │   └── error.middleware.ts        # error handler terpusat
-│   │   ├── db/
-│   │   │   ├── schema.ts                  # definisi tabel Drizzle
-│   │   │   ├── index.ts                   # instance db (drizzle + pg Pool)
-│   │   │   └── seed.ts                    # seeding manual via tsx
-│   │   ├── jobs/
-│   │   │   └── payroll-cron.ts
-│   │   ├── utils/
-│   │   │   ├── geolocation.ts
-│   │   │   └── logger.ts                  # instance Pino
-│   │   ├── config/
-│   │   │   └── env.ts                     # load + validasi env (dotenv-flow + zod)
-│   │   ├── app.ts                         # Express app: helmet, cors, cookie-parser, routes — TANPA listen
-│   │   └── server.ts                       # app.listen — entry point dev & production
-│   ├── drizzle/
-│   │   └── migrations/                     # hasil `db:generate`, jangan diedit manual
-│   ├── drizzle.config.ts
-│   ├── swagger.config.ts                   # generator dokumentasi API
-│   ├── .env.development
-│   ├── .env.production
-│   ├── package.json
-│   └── tsconfig.json
+│   │   ├── app.ts               # Express app (TANPA listen) — export default
+│   │   ├── server.ts            # app.listen — entry dev & production non-serverless
+│   │   ├── configs/
+│   │   │   ├── db.ts            # instance Drizzle (node-postgres), export default
+│   │   │   ├── env.ts           # load + validasi env (dotenv-flow + zod)
+│   │   │   └── swagger.ts       # setup swagger-ui + swagger-autogen
+│   │   ├── routes/              # <nama>.routes.ts (flat — bukan modules/)
+│   │   ├── controllers/         # <nama>.controller.ts
+│   │   ├── middlewares/         # error-handler.ts, not-found-handler.ts
+│   │   ├── utils/               # logger (pino), api-error, api-response, async-handler, shutdown
+│   │   ├── constants/           # status-codes.ts
+│   │   └── drizzle/
+│   │       ├── index.ts         # kumpulkan semua schema (export *)
+│   │       ├── schemas/         # <nama>.schema.ts (definisi tabel Drizzle)
+│   │       └── migrations/      # hasil `db:generate` — JANGAN edit manual
+│   ├── drizzle.config.ts        # config drizzle-kit (out: src/drizzle/migrations)
+│   ├── swagger.config.ts        # generator dokumentasi API (swagger-autogen)
+│   ├── .env.example             # template env (lihat CONTRIBUTING.md)
+│   └── package.json
 │
-├── shared/                       # Tipe TS yang dipakai bareng client & server
-│   └── types/
-│       ├── employee.types.ts
-│       ├── attendance.types.ts
-│       ├── payroll.types.ts
-│       └── rbac.types.ts
-│
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── CONTRIBUTING.md
-│   ├── TESTING.md
-│   ├── CODE_STYLE.md
-│   ├── AGENTS.md
-│   ├── DEPLOYMENT.md
-│   └── GIT_WORKFLOW.md
-│
-├── .husky/                       # git hooks — HARUS di root, bukan di dalam server/
+├── docs/                        # dokumentasi (file ini, ARCHITECTURE, CODE_STYLE, dst)
+├── .husky/                      # git hooks — HARUS di root, bukan di dalam server/
 │   └── pre-commit
-│
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-│
-├── package.json                  # root — orkestrasi + husky + lint-staged lintas folder
-└── README.md
+├── .github/workflows/           # deploy-client.yml, deploy-server.yml (deploy only)
+├── package.json                 # root — orkestrasi + husky
+└── package-lock.json
 ```
 
-## Stack Client (Rencana)
-`client/package.json` saat ini baru berisi React + Vite + TS dasar (belum ada Tailwind/Zustand/TanStack Query di `dependencies`), tapi struktur folder di atas sudah disiapkan untuk stack tujuan berikut — sesuai yang dipakai di proyek lain pada resume Anda:
+## Stack & Status Implementasi
 
-| Kebutuhan | Library | Ditaruh di |
+| Bagian | Tool | Status |
 |---|---|---|
-| Styling | Tailwind CSS | konfigurasi via `tailwind.config.ts`, dipakai langsung di komponen |
-| UI Kit | Shadcn UI | `components/ui/` |
-| State lintas-fitur | Zustand | `stores/` |
-| Data fetching & caching | TanStack Query | custom hooks di `hooks/`, mis. `useEmployees()`, `useAttendance()` |
+| Frontend framework | React 19 + Vite 8 + TypeScript (ESM) | aktif |
+| Styling | Tailwind CSS v4 (plugin `@tailwindcss/vite`, CSS-based) | aktif |
+| State / data fetching (Zustand, TanStack Query) | — | rencana, belum di-install |
+| UI kit (Shadcn) | — | rencana |
+| Backend | Express 5 + TypeScript (ESM) | aktif |
+| ORM | Drizzle ORM (`node-postgres`) + `pg` | aktif |
+| Validasi input | Zod v4 | aktif |
+| Logging | Pino | aktif |
+| Dokumentasi API | swagger-autogen + swagger-ui-express | aktif |
+| Auth / RBAC (JWT, middleware guard) | — | rencana, belum diimplementasi |
+| Modul bisnis (employee/leave/attendance/payroll) | — | masih scaffold (`health` saja) |
 
-Tambahkan saat mulai coding fitur pertama:
-```bash
-npm install --prefix client zustand @tanstack/react-query
-npm install --prefix client -D tailwindcss postcss autoprefixer
-npx --prefix client tailwindcss init -p
-```
-Shadcn UI diinstal per-komponen lewat CLI-nya sendiri (`npx shadcn@latest add button`, dst) saat komponen itu dibutuhkan — bukan sekaligus di awal.
+## Catatan Penting (supaya tidak salah asumsi)
 
-## Kenapa Ada Folder `shared/`?
-Karena `server/package.json` sudah punya `tsc-alias`, path alias TypeScript (`@/*`) di-resolve otomatis saat build backend. Manfaatkan pola yang sama untuk folder `shared/`:
-
-**`server/tsconfig.json`**:
-```json
-{
-  "compilerOptions": {
-    "paths": {
-      "@/*": ["./src/*"],
-      "@shared/*": ["../shared/*"]
-    }
-  }
-}
-```
-
-**`client/tsconfig.json`** (Vite tidak otomatis baca `paths` tsconfig — tambahkan juga alias di `vite.config.ts`):
-```ts
-// vite.config.ts
-import { defineConfig } from 'vite'
-import path from 'path'
-
-export default defineConfig({
-  resolve: {
-    alias: {
-      '@shared': path.resolve(__dirname, '../shared'),
-    },
-  },
-})
-```
+- **`shared/` dan alias `@shared/*` BELUM ADA.** Tipe lintas frontend-backend belum disepakati; jangan asumsikan ada sampai dibuat.
+- Pola **`modules/<modul>/` + `*.repository.ts`** adalah **arsitektur target**, bukan struktur saat ini. Kode sekarang pakai folder flat `routes/` + `controllers/`. Saat menambah fitur, cocokkan dengan struktur yang ADA.
+- **Serverless entry** (`server/api/index.ts`, `vercel.json`) **belum dibuat.** Saat ini `server.ts` pakai `app.listen` (cocok untuk dev lokal). Untuk Vercel serverless function butuh penyesuaian entry — lihat `DEPLOYMENT.md`.
+- DB instance bersifat **singleton** di `configs/db.ts` (`export default db`). Impor dari sana; jangan membuat koneksi `pg` baru di tempat lain.
 
 ## `package.json` Root — Orkestrasi
-Script server dan client **tidak seragam** (server pakai `lint:check`/`lint:fix`, client pakai `lint`) — root menjembatani ini:
+
+Script server dan client tidak seragam (server pakai `lint:check`/`lint:fix`, client pakai `lint`) — root menjembatani ini:
 
 ```json
 {
-  "name": "nexahr",
-  "private": true,
   "scripts": {
     "install:all": "npm install && npm install --prefix client && npm install --prefix server",
     "dev": "concurrently -n CLIENT,SERVER -c blue,green \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
@@ -158,38 +87,12 @@ Script server dan client **tidak seragam** (server pakai `lint:check`/`lint:fix`
     "typecheck": "tsc -b --noEmit client && npm run typecheck --prefix server",
     "build": "npm run build --prefix client && npm run build --prefix server",
     "prepare": "husky"
-  },
-  "devDependencies": {
-    "concurrently": "^9.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^17.3.0"
   }
 }
 ```
 
-> **Catatan penting:** saat ini belum ada script `test` di `client` maupun `server` — package.json keduanya belum menyertakan test runner. Lihat `docs/TESTING.md` untuk rencana penambahannya.
+Gunakan wrapper root (`npm run lint`, `npm run typecheck`, `npm run build`) supaya client & server tervalidasi bersama.
 
-## Husky & lint-staged — Harus di Root
-`server/package.json` saat ini sudah punya config `lint-staged`, tapi git hook (`.husky/`) **wajib diinisialisasi di root repo**, karena hook bekerja terhadap `.git` di level repo, bukan per-folder. Pindahkan konfigurasi:
+## Husky & lint-staged
 
-**Root `package.json`** — tambahkan:
-```json
-{
-  "lint-staged": {
-    "server/src/**/*.ts": [
-      "npm run lint:fix --prefix server --",
-      "npm run format:fix --prefix server --"
-    ],
-    "client/src/**/*.{ts,tsx}": [
-      "npm run lint --prefix client -- --fix"
-    ]
-  }
-}
-```
-```bash
-npx husky init          # dijalankan sekali di ROOT repo, bukan di dalam server/
-```
-Isi `.husky/pre-commit`:
-```bash
-npx lint-staged
-```
+`.husky/pre-commit` saat ini berisi `npm test`, **padahal script `test` belum ada** → setiap commit akan gagal/terblokir. Rencana: ganti isi pre-commit menjadi `npx lint-staged` dan tambahkan config `lint-staged` di **root** `package.json` (hook bekerja di level repo, bukan per-folder). Belum dikonfigurasi — waspadai saat melakukan commit.

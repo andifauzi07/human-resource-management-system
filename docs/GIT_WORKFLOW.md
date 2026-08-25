@@ -18,7 +18,7 @@ Contoh: `feature/attendance-geolocation`, `fix/payroll-rounding-error`
 git checkout main && git pull
 git checkout -b feature/nama-fitur
 # ... kerja ...
-npm run lint && npm run test && npm run build   # wajib hijau sebelum push
+npm run lint && npm run typecheck && npm run build   # wajib hijau sebelum push
 git add .
 git commit -m "feat(attendance): tambah validasi radius kantor"
 git push origin feature/nama-fitur
@@ -27,8 +27,10 @@ git push origin feature/nama-fitur
 
 ## Aturan Merge
 - Squash merge ke `main` agar history bersih (1 fitur = 1 commit di main)
-- PR wajib lolos CI (`lint`, `test`, `build`) sebelum bisa merge
+- Pastikan checklist lokal `lint` + `typecheck` + `build` hijau sebelum merge (tidak ada CI otomatis yang mengeksekusi ini — `.github/workflows/` hanya deploy Vercel)
 - Untuk proyek portofolio solo, tetap disiplin pakai PR (bukan direct push ke `main`) — ini juga jadi bukti workflow profesional untuk reviewer/recruiter yang cek repo
+
+> Catatan: `npm run test` belum ada (test runner belum terpasang, lihat `docs/TESTING.md`). Jangan masukkan `test` ke alur wajib sampai runner ditambahkan.
 
 ## Tagging Rilis (opsional untuk demo)
 ```bash

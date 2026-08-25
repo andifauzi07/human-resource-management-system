@@ -1,4 +1,4 @@
-# Testing Guidelines — NexaHR
+# Testing Guidelines — HRIS
 
 ## Status Saat Ini
 `client/package.json` dan `server/package.json` **belum menyertakan test runner** — belum ada Vitest, Jest, atau library testing lain terpasang. Dokumen ini adalah target/rencana pengujian begitu test runner ditambahkan, bukan sesuatu yang sudah aktif dijalankan lewat CI hari ini.

@@ -1,275 +1,185 @@
-# System Design: HRIS Portfolio Demo
-### "NexaHR" — Sistem Manajemen SDM Berbasis Web
+# System Design: HRIS (Portfolio Demo)
 
-> **Catatan penting:** Nama, data, dan skenario bisnis di dokumen ini sepenuhnya fiktif, dirancang ulang dari nol untuk kebutuhan portofolio. Tidak ada kode, skema database, atau aset milik PT. Barru Barakah Properti yang digunakan. Ini murni rekonstruksi konsep berdasarkan deskripsi fitur umum sistem HRIS.
+HRIS adalah demo sistem HRIS (manajemen karyawan, cuti, absensi geolocation, payroll/lembur otomatis, RBAC). Dokumen ini mendeskripsikan desain produk & arsitektur yang **sedang dibangun** — bagian yang belum diimplementasi ditandai "🚧 rencana".
 
----
-
-## 1. Ringkasan & Tujuan Portofolio
-
-Demo ini dirancang untuk menunjukkan kemampuan fullstack Anda dalam 4 area:
-
-| Area | Skill yang Ditunjukkan |
-|---|---|
-| Manajemen karyawan & cuti | CRUD kompleks, relasi data, workflow approval |
-| Absensi digital + geolocation | Integrasi Geolocation API, validasi radius, real-time |
-| Payroll & lembur otomatis | Business logic kalkulasi, scheduled jobs, akurasi numerik |
-| RBAC | Auth & authorization, middleware, keamanan data sensitif |
-
-**Positioning untuk portofolio:** Tulis di README/case study bahwa proyek ini adalah *"reimplementasi independen dari konsep sistem HRIS yang pernah saya kembangkan secara profesional, dibangun ulang dari nol tanpa kode maupun data asli perusahaan, untuk keperluan demonstrasi publik."* Ini penting secara etis dan legal (NDA/kepemilikan kode klien).
+> Dokumen ini sepenuhnya fiktif, untuk keperluan portofolio. Tidak ada kode/data milik pihak lain yang digunakan.
 
 ---
 
-## 2. Tech Stack
+## 1. Tech Stack (Sesuai yang Terpasang)
 
-| Layer | Teknologi | Alasan |
+| Layer | Teknologi | Status |
 |---|---|---|
-| Frontend | React (Vite) + TypeScript | Cepat, sesuai keahlian di resume |
-| State/Data fetching | TanStack Query + Zustand | Sesuai stack yang sudah Anda kuasai |
-| Styling | Tailwind CSS + Shadcn UI | Konsisten dengan proyek lain di resume |
-| Backend | Express.js + TypeScript | Sesuai preferensi stack |
-| ORM | Prisma | Migrasi schema rapi, cocok untuk showcase database design |
-| Database | PostgreSQL | Sesuai pilihan Anda |
-| Auth | JWT (access + refresh token) | Standar untuk RBAC |
-| File/Geolocation | Browser Geolocation API + Haversine formula (server-side validation) | Tidak perlu API berbayar |
-| Scheduled Jobs | node-cron | Untuk kalkulasi lembur/payroll otomatis periodik |
-| Deployment | Frontend: Vercel, Backend: Railway/Render, DB: Supabase/Neon (Postgres) | Gratis untuk demo publik |
+| Frontend | React 19 + Vite 8 + TypeScript | aktif |
+| Styling | Tailwind CSS v4 (`@tailwindcss/vite`, CSS-based `@import "tailwindcss"`) | aktif |
+| State / data fetching | Zustand + TanStack Query | 🚧 rencana (belum di-install) |
+| UI kit | Shadcn UI | 🚧 rencana |
+| Backend | Express 5 + TypeScript (ESM) | aktif |
+| ORM | Drizzle ORM (`node-postgres`) + `pg` | aktif |
+| Database | PostgreSQL | aktif |
+| Validasi | Zod v4 | aktif |
+| Logging | Pino | aktif |
+| Auth | JWT (access + refresh) | 🚧 rencana (belum ada middleware) |
+| Scheduled Jobs | Vercel Cron → API route | 🚧 rencana (pengganti `node-cron`) |
+| Deployment | Client & Server = 2 project Vercel terpisah, DB = Neon/Supabase Postgres | aktif (deploy via GitHub Actions) |
 
 ---
 
-## 3. Arsitektur Tingkat Tinggi
+## 2. Arsitektur Tingkat Tinggi
 
 ```
-┌─────────────────┐         HTTPS/REST        ┌──────────────────┐
-│   React SPA      │ ─────────────────────────▶│   Express API     │
+┌─────────────────┐        HTTPS / REST        ┌──────────────────┐
+│   React SPA      │ ─────────────────────────▶ │   Express API     │
 │  (Vite + TS)      │◀───────────────────────── │  (Layered Arch)   │
-└─────────────────┘         JSON + JWT          └──────────────────┘
+└─────────────────┘        JSON + JWT           └──────────────────┘
                                                           │
-                                    ┌─────────────────────┼─────────────────────┐
-                                    ▼                     ▼                     ▼
-                             Auth Middleware      Business Logic         Prisma ORM
-                             (RBAC Guard)          Services Layer             │
-                                                                               ▼
-                                                                        PostgreSQL DB
+                             ┌────────────────────────────┼─────────────────────────┐
+                             ▼                            ▼                         ▼
+                      Auth Middleware 🚧          Business Logic            Drizzle ORM
+                      (RBAC Guard) 🚧             Services Layer                │
+                                                                                ▼
+                                                                         PostgreSQL DB
 ```
 
-**Pola arsitektur backend:** Layered Architecture (Controller → Service → Repository) agar terlihat rapi saat kode dibaca recruiter/reviewer:
-
-```
-src/
-├── modules/
-│   ├── auth/
-│   │   ├── auth.controller.ts
-│   │   ├── auth.service.ts
-│   │   └── auth.routes.ts
-│   ├── employees/
-│   │   ├── employee.controller.ts
-│   │   ├── employee.service.ts
-│   │   ├── employee.repository.ts
-│   │   └── employee.routes.ts
-│   ├── leave/
-│   ├── attendance/
-│   ├── payroll/
-│   └── overtime/
-├── middlewares/
-│   ├── auth.middleware.ts       # verifikasi JWT
-│   └── rbac.middleware.ts       # cek permission per role
-├── jobs/
-│   └── payroll-cron.ts          # kalkulasi lembur harian/bulanan
-├── utils/
-│   └── geolocation.ts           # haversine distance check
-├── prisma/
-│   └── schema.prisma
-└── server.ts
-```
-
-Frontend disarankan struktur berbasis fitur (feature-based), sama seperti proyek "Warunk" di resume Anda:
+### Struktur `server/src` (aktual — flat, bukan `modules/`)
 
 ```
 src/
-├── features/
-│   ├── employees/
-│   ├── leave/
-│   ├── attendance/
-│   ├── payroll/
-│   └── auth/
-├── components/ui/        # shadcn components
-├── stores/                # zustand
-├── hooks/                 # custom hooks + tanstack query hooks
-└── lib/
+├── app.ts                      # Express app TANPA listen (export default)
+├── server.ts                   # app.listen — dev lokal
+├── configs/
+│   ├── db.ts                   # singleton Drizzle (node-postgres), export default
+│   ├── env.ts                  # dotenv-flow + validasi zod
+│   └── swagger.ts              # swagger-ui + swagger-autogen
+├── routes/                     # <nama>.routes.ts
+├── controllers/                # <nama>.controller.ts
+├── middlewares/                # error-handler.ts, not-found-handler.ts
+├── utils/                      # logger (pino), api-error, api-response, async-handler, shutdown
+├── constants/status-codes.ts
+└── drizzle/
+    ├── index.ts                # kumpulkan schema (export *)
+    ├── schemas/                # <nama>.schema.ts (definisi tabel)
+    └── migrations/             # hasil drizzle-kit generate
+```
+
+> **Pola layering target:** Controller → Service → Repository. Saat ini baru `controllers/` + `routes/` flat; layer Service & Repository akan menyusul saat modul bisnis dibuat. Definisi tabel sudah di `drizzle/schemas/`.
+
+Frontend direncanakan struktur berbasis fitur (feature-based):
+```
+src/
+├── features/{employees,leave,attendance,payroll,auth}/
+├── components/ui/        # shadcn 🚧
+├── stores/               # zustand 🚧
+├── hooks/                # TanStack Query 🚧
+└── lib/api.ts            # wrapper fetch ke backend
 ```
 
 ---
 
-## 4. Skema Database (ERD Konseptual)
+## 3. Skema Database (ERD Konseptual)
 
-### Entitas Utama
+Didefinisikan di `server/src/drizzle/schemas/*.schema.ts` (satu file per modul). Tabel saat ini baru `users` (seed awal); sisanya rencana:
 
-**users**
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| id | UUID PK | |
-| email | varchar unique | |
-| password_hash | varchar | |
-| role | enum('STAFF','HRD','MANAGEMENT') | dipakai RBAC |
-| employee_id | UUID FK → employees.id | nullable |
-| created_at | timestamp | |
+**users** — `id` (UUID PK), `email` (varchar unique), `password_hash` (varchar), `role` enum(`STAFF`,`HRD`,`MANAGEMENT`), `employee_id` (UUID FK → employees.id, nullable), `created_at`.
 
-**employees**
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| id | UUID PK | |
-| full_name | varchar | |
-| department_id | UUID FK → departments.id | |
-| position | varchar | |
-| base_salary | decimal | |
-| join_date | date | |
-| status | enum('ACTIVE','INACTIVE') | |
+Rencana relasi utama:
+- `employees`: `id`, `full_name`, `department_id` (FK), `position`, `base_salary`, `join_date`, `status` enum(`ACTIVE`,`INACTIVE`)
+- `departments`: `id`, `name`, `manager_id` (FK → employees.id)
+- `leave_requests`: `id`, `employee_id` FK, `type` enum(`ANNUAL`,`SICK`,`UNPAID`), `start_date`, `end_date`, `reason`, `status` enum(`PENDING`,`APPROVED`,`REJECTED`), `approved_by` FK
+- `attendance`: `id`, `employee_id` FK, `check_in_time`, `check_out_time`, `check_in_lat`/`check_in_lng`, `distance_from_office_m`, `is_valid_location` (bool), `status` enum(`ON_TIME`,`LATE`,`ABSENT`)
+- `office_locations`: `id`, `latitude`, `longitude`, `radius_meters`
+- `overtime_records`: `id`, `employee_id` FK, `date`, `hours`, `hourly_rate_multiplier`, `calculated_amount`, `status`
+- `payroll`: `id`, `employee_id` FK, `period_month`, `period_year`, `base_salary`, `total_overtime`, `total_deduction`, `net_salary`, `generated_at`
 
-**departments**
-| id, name, manager_id (FK → employees.id) |
-
-**leave_requests**
-| id, employee_id FK, type enum('ANNUAL','SICK','UNPAID'), start_date, end_date, reason, status enum('PENDING','APPROVED','REJECTED'), approved_by FK → employees.id |
-
-**attendance**
-| Kolom | Tipe | Keterangan |
-|---|---|---|
-| id | UUID PK | |
-| employee_id | UUID FK | |
-| check_in_time | timestamp | |
-| check_out_time | timestamp nullable | |
-| check_in_lat / check_in_lng | decimal | dari browser geolocation |
-| distance_from_office_m | decimal | hasil kalkulasi haversine |
-| is_valid_location | boolean | true jika dalam radius kantor (mis. 100m) |
-| status | enum('ON_TIME','LATE','ABSENT') | |
-
-**office_locations**
-| id, latitude, longitude, radius_meters — dipakai untuk validasi presensi |
-
-**overtime_records**
-| id, employee_id FK, date, hours, hourly_rate_multiplier, calculated_amount, status enum('AUTO_CALCULATED','APPROVED') |
-
-**payroll**
-| id, employee_id FK, period_month, period_year, base_salary, total_overtime, total_deduction (mis. tidak masuk tanpa keterangan), net_salary, generated_at |
-
-### Relasi Kunci
-- `employees 1—N attendance`
-- `employees 1—N leave_requests`
-- `employees 1—N overtime_records`
-- `employees 1—N payroll`
-- `departments 1—N employees`
-- `users 1—1 employees` (kecuali akun HRD/Management murni admin tanpa data pegawai)
+Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `departments 1—N employees`, `users 1—1 employees` (kecuali admin HRD/Management tanpa data pegawai).
 
 ---
 
-## 5. Desain RBAC (Role-Based Access Control)
+## 4. Desain RBAC 🚧 (belum diimplementasi)
 
 | Resource | STAFF | HRD | MANAGEMENT |
 |---|---|---|---|
 | Lihat profil sendiri | ✅ | ✅ | ✅ |
-| Lihat data semua karyawan | ❌ | ✅ | ✅ (read-only) |
+| Lihat semua karyawan | ❌ | ✅ | ✅ (read-only) |
 | Tambah/edit/hapus karyawan | ❌ | ✅ | ❌ |
 | Ajukan cuti | ✅ (milik sendiri) | ✅ | ✅ |
-| Approve/reject cuti | ❌ | ✅ | ✅ (khusus tim langsung) |
+| Approve/reject cuti | ❌ | ✅ | ✅ |
 | Check-in/out presensi | ✅ | ✅ | ✅ |
 | Lihat presensi semua karyawan | ❌ | ✅ | ✅ |
 | Lihat slip gaji sendiri | ✅ | ✅ | ✅ |
-| Lihat/generate slip gaji semua karyawan | ❌ | ✅ | ✅ (read-only, laporan agregat) |
-| Kelola pengaturan lokasi kantor | ❌ | ✅ | ❌ |
+| Lihat/generate slip gaji semua | ❌ | ✅ | ✅ |
+| Kelola lokasi kantor | ❌ | ✅ | ❌ |
 
-**Implementasi teknis:**
-- Middleware `rbac.middleware.ts` menerima array permission yang diizinkan per endpoint, contoh: `router.get('/payroll/all', authGuard, rbacGuard(['HRD','MANAGEMENT']), controller)`
-- Untuk kasus "lihat data sendiri", tambahkan pengecekan `req.user.employee_id === params.employeeId` di service layer, bukan hanya di middleware — supaya logika tetap konsisten walau endpoint dipanggil lewat cara lain.
+**Implementasi teknis (rencana):**
+- Middleware `auth.middleware.ts` (verifikasi JWT) + `rbac.middleware.ts` (array permission per endpoint), contoh: `router.get('/payroll/all', authGuard, rbacGuard(['HRD','MANAGEMENT']), controller)`.
+- Kasus "lihat data sendiri" dicek juga di **service layer** (`req.user.employeeId === params.employeeId`), bukan hanya middleware.
 
 ---
 
-## 6. Spesifikasi Fitur & Logika Bisnis
+## 5. Spesifikasi Fitur & Logika Bisnis
 
-### 6.1 Absensi Digital + Geolocation
-1. Frontend memanggil `navigator.geolocation.getCurrentPosition()` saat user klik "Check In".
+### 5.1 Absensi + Geolocation 🚧
+1. Frontend `navigator.geolocation.getCurrentPosition()` saat "Check In".
 2. Kirim `{ lat, lng, timestamp }` ke backend.
-3. Backend hitung jarak ke `office_locations` pakai **Haversine formula**.
-4. Jika jarak ≤ radius (misal 100m) → `is_valid_location = true`, status dihitung dari jam check-in vs jam kerja standar (mis. >08.15 = LATE).
-5. Jika di luar radius → tetap simpan record tapi flag `is_valid_location = false`, tampilkan warning ke user, dan beri HRD visibilitas atas anomali ini di dashboard.
+3. Backend hitung jarak ke `office_locations` via **Haversine**.
+4. Jarak ≤ radius (mis. 100m) → `is_valid_location = true`; status dari jam vs standar (mis. >08.15 = LATE).
+5. Luar radius → simpan tapi `is_valid_location = false` + warning.
 
-> Tips demo: siapkan toggle "simulasi lokasi" di dev tools browser agar reviewer bisa uji kasus valid/invalid tanpa perlu pindah lokasi fisik.
+### 5.2 Payroll & Lembur Otomatis 🚧
+- Cron harian (Vercel Cron → API route) hitung `overtime_records` dari `check_out_time − jam_kerja_standar`.
+- Rate: 1.5x/jam untuk 2 jam pertama, 2x setelahnya.
+- Job bulanan: `base_salary + total_overtime − total_deduction` → record `payroll`.
 
-### 6.2 Payroll & Lembur Otomatis
-1. Job cron (`node-cron`) berjalan setiap akhir hari untuk menghitung `overtime_records` dari selisih `check_out_time - jam_kerja_standar`.
-2. Rate lembur mengikuti aturan sederhana yang bisa dikonfigurasi (mis. 1.5x rate/jam untuk 2 jam pertama, 2x setelahnya) — cukup untuk showcase tanpa perlu 100% akurat aturan Kemnaker.
-3. Job bulanan menggabungkan `base_salary + total_overtime - total_deduction` menjadi record `payroll`.
-4. HRD bisa trigger manual regenerate lewat endpoint admin jika ada koreksi data.
-
-### 6.3 Manajemen Karyawan & Cuti
-- CRUD karyawan standar dengan validasi (mis. `base_salary > 0`, email unik).
-- Leave request pakai state machine sederhana: `PENDING → APPROVED/REJECTED`, dengan notifikasi (bisa disimulasikan dengan in-app notification, tidak perlu email real untuk demo).
-- Tampilkan sisa cuti tahunan (kalkulasi: kuota tahunan − cuti yang sudah approved).
+### 5.3 Karyawan & Cuti 🚧
+- CRUD karyawan + validasi (`base_salary > 0`, email unik).
+- Leave request state machine: `PENDING → APPROVED/REJECTED`.
 
 ---
 
-## 7. Daftar Endpoint API (Ringkas)
+## 6. Daftar Endpoint API (Rencana)
 
 ```
 POST   /api/auth/login
 POST   /api/auth/refresh
-
-GET    /api/employees              (HRD, MANAGEMENT)
-POST   /api/employees              (HRD)
-GET    /api/employees/:id          (self, HRD, MANAGEMENT)
-PATCH  /api/employees/:id          (HRD)
-DELETE /api/employees/:id          (HRD)
-
-POST   /api/leave                  (self)
-GET    /api/leave/mine             (self)
-GET    /api/leave                  (HRD, MANAGEMENT)
-PATCH  /api/leave/:id/approve      (HRD, MANAGEMENT)
-PATCH  /api/leave/:id/reject       (HRD, MANAGEMENT)
-
-POST   /api/attendance/check-in    (self)
-POST   /api/attendance/check-out   (self)
-GET    /api/attendance/mine        (self)
-GET    /api/attendance             (HRD, MANAGEMENT)
-
-GET    /api/payroll/mine           (self)
-GET    /api/payroll                (HRD, MANAGEMENT)
-POST   /api/payroll/generate       (HRD)
-
-GET    /api/office-locations       (HRD)
-POST   /api/office-locations       (HRD)
+GET    /api/employees
+POST   /api/employees
+GET    /api/employees/:id
+PATCH  /api/employees/:id
+DELETE /api/employees/:id
+POST   /api/leave
+GET    /api/leave/mine
+GET    /api/leave
+PATCH  /api/leave/:id/approve
+PATCH  /api/leave/:id/reject
+POST   /api/attendance/check-in
+POST   /api/attendance/check-out
+GET    /api/attendance/mine
+GET    /api/attendance
+GET    /api/payroll/mine
+GET    /api/payroll
+POST   /api/payroll/generate
+GET    /api/office-locations
+POST   /api/office-locations
 ```
+Saat ini baru ada `GET /api/v1/health` (lihat `routes/health.routes.ts`).
 
 ---
 
-## 8. Data Dummy untuk Demo
+## 7. Roadmap Implementasi (Saran Urutan)
 
-Buat seeder Prisma (`prisma/seed.ts`) yang generate:
-- 1 lokasi kantor fiktif (koordinat bebas, misal Makassar)
-- 3 departemen (Operasional, Keuangan, IT)
-- ±15 karyawan dummy dengan `faker.js`
-- Data presensi 30 hari terakhir dengan variasi status (tepat waktu, telat, lokasi invalid) agar dashboard terlihat hidup saat direview
-- Beberapa leave request dengan status campuran
-
-Gunakan library **`@faker-js/faker`** untuk generate nama, agar tidak menyerupai data karyawan asli perusahaan sebelumnya.
-
----
-
-## 9. Roadmap Implementasi (Saran Urutan Kerja)
-
-1. **Setup**: init repo, Prisma schema, migrasi awal, seeder
-2. **Auth + RBAC**: login, JWT, middleware guard
-3. **Modul Employee**: CRUD + halaman list/detail di frontend
-4. **Modul Attendance**: geolocation check-in/out + dashboard HRD
-5. **Modul Leave**: request + approval flow
-6. **Modul Overtime + Payroll**: cron job + slip gaji view
-7. **Polish**: dashboard summary/statistik (chart pakai Recharts), responsive UI
-8. **Deploy**: Vercel (FE) + Railway (BE) + Neon/Supabase (DB)
-9. **README case study**: masalah → solusi → tech decision → screenshot/GIF demo
+1. **Setup DB**: Drizzle schema lengkap + migrasi + seeder (`drizzle/schemas/`, `db:generate`, `db:migrate`).
+2. **Auth + RBAC** 🚧: login, JWT, middleware guard.
+3. **Modul Employee**: CRUD + halaman frontend.
+4. **Modul Attendance**: geolocation check-in/out.
+5. **Modul Leave**: request + approval.
+6. **Modul Overtime + Payroll** 🚧: Vercel Cron API route.
+7. **Polish**: dashboard statistik, UI responsive.
+8. **Deploy**: Vercel (FE) + Vercel serverless (BE) + Neon/Supabase (DB).
 
 ---
 
-## 10. Hal yang Membuat Demo Ini "Portfolio-Ready"
+## 8. Supaya "Portfolio-Ready"
 
-- Sertakan **1-2 keputusan arsitektur yang dijelaskan** di README (mis. "kenapa pakai Haversine bukan Google Maps API" → cost & simplicity).
-- Rekam GIF singkat untuk tiap fitur utama (check-in geolocation, approval cuti, slip gaji auto-generate).
-- Deploy live + sediakan akun demo readonly (STAFF/HRD/MANAGEMENT) agar recruiter bisa coba langsung tanpa daftar.
+- Jelaskan 1–2 keputusan arsitektur di README (mis. "Haversine bukan Google Maps API" → cost & simplicity).
+- Rekam GIF singkat per fitur utama.
+- Deploy live + sediakan akun demo (STAFF/HRD/MANAGEMENT) agar recruiter bisa coba langsung.

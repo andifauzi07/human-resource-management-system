@@ -30,8 +30,8 @@ Karena `server/package.json` punya `"type": "module"`, hindari asumsi CommonJS:
 ## Aturan ESLint Kunci
 - `no-explicit-any`: error (pakai `unknown` + type guard, bukan `any`)
 - `no-unused-vars`: error
-- `import/order`: import diurutkan — built-in → external → internal (`@/*`, `@shared/*`) → relative
-- `eslint-plugin-boundaries` (opsional tapi disarankan): mencegah `client/` mengimpor langsung dari `server/src` — komunikasi hanya lewat HTTP API atau folder `shared/`
+- `import/order`: import diurutkan — built-in → external → internal (`@/*`) → relative. (Alias `@/*` → `./src/*` hanya terpasang di `server/tsconfig.json`; `client/` belum punya path alias.)
+- `eslint-plugin-boundaries` (opsional): mencegah `client/` mengimpor langsung dari `server/src` — komunikasi hanya lewat HTTP API. (Folder `shared/` 🚧 rencana, belum ada.)
 
 ## Konvensi Penamaan
 | Jenis | Konvensi | Contoh |
@@ -83,7 +83,7 @@ export async function generate(input: GeneratePayrollInput) {
 }
 
 // payroll.repository.ts
-import { db } from '../../db'
+import db from '../../configs/db'
 export async function create(data: NewPayroll) {
   return db.insert(payrollTable).values(data).returning()
 }
@@ -98,11 +98,13 @@ logger.error({ err }, 'Failed to calculate overtime')
 ```
 
 ### Frontend
+> Stack frontend saat ini **baru React 19 + Vite + Tailwind CSS v4**. Zustand, TanStack Query, dan Shadcn **masih rencana** (belum di-install) — terapkan konvensi di bawah ini setelah library tersebut ditambahkan.
+
 - Komponen presentational vs container dipisah bila komponen mulai > 150 baris
-- Data fetching **hanya** lewat custom hook TanStack Query (`useEmployees()`, bukan `fetch` langsung di komponen)
+- Data fetching direncanakan lewat custom hook TanStack Query (`useEmployees()`), bukan `fetch` langsung di komponen
 - State global (Zustand) hanya untuk state lintas-fitur (mis. auth session) — state lokal tetap `useState`
-- Styling pakai utility class Tailwind langsung; hindari CSS module terpisah kecuali untuk kasus animasi kompleks
-- Komponen UI dasar (button, input, dialog, dll) diambil dari Shadcn (`components/ui/`), jangan bikin ulang dari nol
+- Styling pakai utility class Tailwind langsung (Tailwind v4: cukup `@import "tailwindcss"` di `index.css`, tanpa `tailwind.config.ts`/`postcss.config`); hindari CSS module terpisah kecuali kasus animasi kompleks
+- Komponen UI dasar direncanakan diambil dari Shadcn (`components/ui/`), bukan bikin ulang dari nol
 
 ## Format & Lint Command
 ```bash
@@ -116,4 +118,4 @@ npm run typecheck --prefix server    # tsc --noEmit
 Atau lewat root (lihat `docs/01-PROJECT-STRUCTURE.md`): `npm run lint`, `npm run lint:fix`, `npm run typecheck`.
 
 ## Pre-commit Hook
-**Sudah dikonfigurasi**, bukan sekadar disarankan — lewat `husky` + `lint-staged`. Konfigurasi `lint-staged` ada di **root** `package.json` (bukan di `server/package.json`, meski dependency-nya sempat ditaruh di sana), karena git hook bekerja di level repo. Lihat `docs/01-PROJECT-STRUCTURE.md` bagian "Husky & lint-staged" untuk setup lengkapnya.
+Hook `husky` ada di **root** (`.husky/pre-commit`), tetapi saat ini isinya `npm test` padahal script `test` belum ada — commit akan **gagal/terblokir**. Konfigurasi `lint-staged` (dan mengganti isi pre-commit ke `npx lint-staged`) **belum ditambahkan**. Lihat `docs/01-PROJECT-STRUCTURE.md` bagian "Husky & lint-staged" untuk rencananya. Waspadai saat melakukan commit.

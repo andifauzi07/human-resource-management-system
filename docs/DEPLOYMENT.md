@@ -31,13 +31,12 @@ Dua peran dipisah agar masing-masing berjalan di tempat yang paling andal:
 
 ## 2. Server sebagai Serverless Function ✅
 
-Deploy memakai **deteksi otomatis Express** milik Vercel (zero-configuration): Vercel mengenali `src/app.ts` (lokasi entry yang diakui: `app`/`index`/`server` di root atau `src/`, dengan default export) lalu membungkus seluruh aplikasi menjadi satu Vercel Function di atas Fluid compute. `src/server.ts` hanya untuk development lokal.
+Deploy memakai **deteksi otomatis Express** milik Vercel (zero-configuration): Vercel mengenali `src/app.ts` (lokasi entry yang diakui: `app`/`index`/`server` di root atau `src/`, dengan default export) lalu membungkus seluruh aplikasi menjadi satu Vercel Function di atas Fluid compute. File yang sama juga dipakai untuk dev lokal — blok `app.listen` di dalamnya ter-guard `!process.env.VERCEL` sehingga tidak aktif di serverless.
 
 ```
 server/
 ├── src/
-│   ├── app.ts              # default export — terdeteksi Vercel sebagai entry produksi
-│   └── server.ts           # app.listen — khusus development lokal
+│   └── app.ts              # default export + listen ter-guard — entry dev & produksi
 └── package.json
 ```
 
@@ -162,7 +161,7 @@ git diff --quiet HEAD^ HEAD -- ./
 
 | Aspek | Dev Lokal | Production (Vercel) |
 |---|---|---|
-| Server entry | `src/server.ts` (`app.listen`) | auto-detect `src/app.ts` (zero-config) ✅ |
+| Server entry | `src/app.ts` (`listen` aktif di luar Vercel) | auto-detect `src/app.ts`, listen ter-skip ✅ |
 | Database | Postgres lokal (Docker Compose) | Neon production |
 | DB connection | Direct (`localhost:5432`) | Pooled connection string |
 | Migrasi skema | Manual lokal (`db:migrate`) | Otomatis di CI, sebelum deploy ✅ |

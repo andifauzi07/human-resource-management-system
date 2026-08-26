@@ -46,7 +46,7 @@ HRIS adalah demo sistem HRIS (manajemen karyawan, cuti, absensi geolocation, pay
 ```
 src/
 ├── app.ts                      # Express app TANPA listen (export default)
-├── server.ts                   # app.listen — dev lokal
+├── app.ts                       # default export + listen ter-guard VERCEL (dev & prod)
 ├── configs/
 │   ├── db.ts                   # singleton Drizzle (node-postgres), export default
 │   ├── env.ts                  # dotenv-flow + validasi zod

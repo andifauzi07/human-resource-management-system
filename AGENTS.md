@@ -27,7 +27,7 @@ Gunakan wrapper root agar kedua package ikut tervalidasi:
 
 Struktur saat ini **flat**, bukan `modules/`:
 
-- `app.ts` — Express app, **tanpa `listen`** (export default). `server.ts` — `app.listen` (hanya dev lokal).
+- `app.ts` — satu-satunya entry: Express app (default export) + bootstrap `listen` ter-guard `!process.env.VERCEL` (lokal/dev saja; di serverless Vercel tidak bind port).
 - `routes/`, `controllers/`, `middlewares/` (baru `error-handler`, `not-found-handler`), `configs/` (`db.ts`, `env.ts`, `swagger.ts`), `utils/` (`logger.ts`, `api-error.ts`, `api-response.ts`, `async-handler.ts`, `shutdown.ts`), `constants/status-codes.ts`.
 - DB instance = `configs/db.ts` (Drizzle + pg Pool). Definisi tabel ada di `drizzle/schemas/*.schema.ts`. Migration di `src/drizzle/migrations/`.
 

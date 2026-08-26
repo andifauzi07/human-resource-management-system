@@ -9,7 +9,7 @@ server/node_modules/
 # 2. PRODUCTION BUILDS (Hasil Kompilasi)
 # ==========================================
 client/dist/
-server/dist/
+# server/dist/
 
 # ==========================================
 # 3. ENVIRONMENT VARIABLES (Data Rahasia)

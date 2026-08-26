@@ -31,27 +31,20 @@ Dua peran dipisah agar masing-masing berjalan di tempat yang paling andal:
 
 ## 2. Server sebagai Serverless Function ✅
 
-Entry serverless ada di `server/api/index.ts` (mengimpor `app` dari `src/app`, **tanpa** `app.listen`). `src/server.ts` hanya untuk development lokal.
+Deploy memakai **deteksi otomatis Express** milik Vercel (zero-configuration): Vercel mengenali `src/app.ts` (lokasi entry yang diakui: `app`/`index`/`server` di root atau `src/`, dengan default export) lalu membungkus seluruh aplikasi menjadi satu Vercel Function di atas Fluid compute. `src/server.ts` hanya untuk development lokal.
 
 ```
 server/
-├── api/
-│   └── index.ts          # entry serverless Vercel (@vercel/node membungkus Express app)
-├── vercel.json           # rewrites semua path → /api
+├── src/
+│   ├── app.ts              # default export — terdeteksi Vercel sebagai entry produksi
+│   └── server.ts           # app.listen — khusus development lokal
 └── package.json
 ```
 
-`vercel.json` aktual:
-```json
-{
-  "buildCommand": "npm run build",
-  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
-}
-```
-- `buildCommand` dipertahankan sebagai gerbang kualitas tipe saat deploy.
-- `dist/` **tidak** dilayani sebagai output statis (kode tidak terekspos publik).
+- **Tanpa** folder `api/`, **tanpa** `vercel.json`, **tanpa** build command custom — platform yang mengompilasi TS dan men-trace dependensi.
 - `swagger.json` ikut ter-bundle otomatis karena diimpor statis di `configs/swagger.ts`.
 - Swagger UI dikontrol flag `ENABLE_DOCS` — flag nonaktif → `/api/docs` merespons 404.
+- Catatan cron mendatang: konfigurasi `crons` nanti ditambahkan lewat file `vercel.json` baru saat modul Cron dibuat.
 
 ---
 
@@ -169,7 +162,7 @@ git diff --quiet HEAD^ HEAD -- ./
 
 | Aspek | Dev Lokal | Production (Vercel) |
 |---|---|---|
-| Server entry | `src/server.ts` (`app.listen`) | `api/index.ts` (serverless) ✅ |
+| Server entry | `src/server.ts` (`app.listen`) | auto-detect `src/app.ts` (zero-config) ✅ |
 | Database | Postgres lokal (Docker Compose) | Neon production |
 | DB connection | Direct (`localhost:5432`) | Pooled connection string |
 | Migrasi skema | Manual lokal (`db:migrate`) | Otomatis di CI, sebelum deploy ✅ |
@@ -181,7 +174,7 @@ git diff --quiet HEAD^ HEAD -- ./
 ---
 
 ## 9. Checklist Sebelum Deploy
-- [x] `server/api/index.ts` + `vercel.json` rewrites ✅
+- [x] Deteksi otomatis Express (`src/app.ts` default export) — tanpa `api/` & `vercel.json` ✅
 - [x] Migrasi produksi otomatis via CI sebelum deploy ✅
 - [ ] Environment variables lengkap di kedua project Vercel (termasuk `ENABLE_DOCS`)
 - [ ] Secret repo GitHub `PROD_DATABASE_URL` dibuat (pooled connection string)

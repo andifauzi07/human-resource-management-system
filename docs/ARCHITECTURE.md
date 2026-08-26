@@ -65,15 +65,22 @@ src/
 
 > **Pola layering (terterapkan sejak Auth):** `routes/` → `controllers/` (tipis, validasi Zod) → `services/` (logika murni) + `middlewares/` (`authGuard`/`rbacGuard`). Layer Repository akan menyusul saat modul bisnis dibuat. Definisi tabel sudah di `drizzle/schemas/`.
 
-Frontend direncanakan struktur berbasis fitur (feature-based):
+Frontend memakai struktur berbasis fitur (feature-based) — sudah terimplementasi sejak login UI:
 ```
 src/
-├── features/{employees,leave,attendance,payroll,auth}/
-├── components/ui/        # shadcn 🚧
-├── stores/               # zustand 🚧
-├── hooks/                # TanStack Query 🚧
-└── lib/api.ts            # wrapper fetch ke backend
+├── routes/                  # file-based routing TanStack Router (__root, index, login)
+├── features/auth/           # logika fitur: session.ts, redirect.ts,
+│   │                        # components/login-form.tsx, schemas/login.schema.ts
+│   ├── {employees,leave,attendance,payroll}/   # menyusul per modul bisnis
+├── components/ui/           # primitif shadcn/ui (button, input, label, card, spinner)
+├── store/                   # zustand (auth.store.ts) — folder tunggal "store"
+├── lib/
+│   ├── api.ts               # wrapper fetch ke backend + auto-refresh 401
+│   └── utils.ts             # helper cn() untuk class merging
+└── routeTree.gen.ts         # hasil generasi @tanstack/router-plugin (jangan edit manual)
 ```
+Aturan penggayaan UI mengacu pada `docs/DESIGN-SYSTEM.md` (wajib). TanStack Query (`hooks/`)
+menyusul saat modul data pertama dibuat; env client: `VITE_API_URL` (termasuk `/api/v1`).
 
 ---
 

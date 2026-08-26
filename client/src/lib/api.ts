@@ -20,12 +20,12 @@ export class ApiClientError extends Error {
   }
 }
 
-async function tryRefresh(): Promise<boolean> {
-  try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
-      method: "POST",
-      credentials: "include"
-    });
+export async function refreshSession(): Promise<boolean> {
+	try {
+		const res = await fetch(`${BASE_URL}/auth/refresh`, {
+			method: "POST",
+			credentials: "include"
+		});
     if (!res.ok) return false;
     const json = (await res.json()) as ApiEnvelope<{
       user: User;
@@ -64,7 +64,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   });
 
   if (response.status === 401 && !_retry) {
-    const refreshed = await tryRefresh();
+    const refreshed = await refreshSession();
     if (refreshed) {
       return apiFetch<T>(path, { ...options, _retry: true });
     }
@@ -88,15 +88,6 @@ export const authApi = {
       method: "POST",
       body: { email, password }
     });
-  },
-  async register(email: string, password: string, role?: User["role"]) {
-    return apiFetch<{ id: string; email: string; role: User["role"] }>(
-      "/auth/register",
-      {
-        method: "POST",
-        body: { email, password, role }
-      }
-    );
   },
   async me(): Promise<User> {
     return apiFetch<User>("/auth/me");

@@ -12,14 +12,18 @@ Saat setup project baru di Vercel, pilih **"Root Directory"** sesuai folder masi
 
 ---
 
-## 1. Deploy Otomatis via GitHub Actions (Sudah Ada)
+## 1. Deploy via Vercel Git Integration + Actions untuk Migrasi ✅
 
-`.github/workflows/deploy-client.yml` & `deploy-server.yml` menangani deploy — bukan `vercel` CLI manual:
+Dua peran dipisah agar masing-masing berjalan di tempat yang paling andal:
 
-- Trigger: `push` ke `main`, dengan `paths` filter (`client/**` / `server/**`) agar hanya project yang berubah yang di-deploy.
-- Langkah: `vercel pull` → `vercel build --prod` → `vercel deploy --prebuilt --prod`.
-- Node version di CI: **20**.
-- Butuh secret repo: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_FRONTEND_PROJECT_ID` / `VERCEL_BACKEND_PROJECT_ID`.
+| Jalur | Tanggung jawab | Pemicu |
+|---|---|---|
+| **Vercel Git Integration** | Build & deploy aplikasi (root directory: `server`) | push ke `main` yang menyentuh `server/**` |
+| **GitHub Actions** (`deploy-server.yml`) | Migrasi database production (`PROD_DATABASE_URL`) | push yang sama |
+
+> Catatan sejarah: deploy via CLI (`vercel pull/build/deploy --prebuilt`) sempat dipakai lalu dihapus karena `vercel build` gagal persisten di GitHub Actions runner (`spawn npm ENOENT`, CLI 59.x). Secret `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_BACKEND_PROJECT_ID` tidak lagi dibutuhkan oleh workflow (boleh dihapus, atau dibiarkan tak terpakai).
+>
+> Ordering: migrasi berjalan paralel dengan build Vercel. Aman karena skema per modul bersifat additive — kode baru hanya mengonsumsi tabel yang dibuat migrasinya.
 
 > Belum ada workflow CI untuk `lint`/`typecheck`/`build` — verifikasi lokal (`npm run lint && npm run typecheck && npm run build`) adalah gerbang kualitas satu-satunya sebelum push.
 
@@ -92,7 +96,7 @@ Preview deployment untuk server dimatikan (lihat §5a), sehingga tidak perlu pol
 
 | Variable | `hris-web` (client) | `hris-api` (server) |
 |---|---|---|
-| `VITE_API_BASE_URL` | ✅ (`https://hriss-api.vercel.app`) | ❌ |
+| `VITE_API_URL` | ✅ (`https://hriss-api.vercel.app/api/v1` — wajib menyertakan `/api/v1`) | ❌ |
 | `NODE_ENV` | ❌ | ✅ (`production`; Vercel juga men-set otomatis) |
 | `PORT` | ❌ | ❌ (opsional, default 9000 — Vercel Functions tidak memakainya) |
 | `DATABASE_URL` | ❌ | ✅ (pooled connection string Neon production) |
@@ -172,7 +176,7 @@ git diff --quiet HEAD^ HEAD -- ./
 | CORS origin | `http://localhost:5173` | `CORS_ORIGIN` env var |
 | Swagger docs | Aktif (`ENABLE_DOCS=true` default) | Flag `ENABLE_DOCS` (portfolio: aktif) |
 | Preview deploy | — | Dimatikan untuk `hris-api` |
-| API base URL (client) | `http://localhost:9000` | `VITE_API_BASE_URL` 🚧 |
+| API base URL (client) | fallback `http://localhost:9000/api/v1` | `VITE_API_URL` ✅ (termasuk `/api/v1`) |
 
 ---
 

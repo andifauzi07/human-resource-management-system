@@ -19,4 +19,13 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Route file-based TanStack Router wajib mengekspor objek Route (bukan
+    // komponen), dan primitif shadcn/ui mengekspor varian cva — keduanya
+    // memang melanggar asumsi fast-refresh, jadi aturan ini dilonggarkan.
+    files: ['src/routes/**/*.{ts,tsx}', 'src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

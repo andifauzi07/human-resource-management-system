@@ -28,6 +28,18 @@ jobs:
           cd server
           npm ci
 
+      # Fail-fast: kalau secret belum tersedia, hentikan di sini dengan
+      # pesan yang jelas — bukan error samar dari drizzle-kit.
+      - name: Preflight — verifikasi PROD_DATABASE_URL
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Secret PROD_DATABASE_URL tidak terbaca. Buat sebagai Repository Secret (bukan Environment Secret / Variable) dengan nama persis 'PROD_DATABASE_URL', lalu Re-run jobs."
+            exit 1
+          fi
+          echo "DATABASE_URL terbaca (panjang ${#DATABASE_URL} karakter)."
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+
       # Migrasi HARUS berjalan sebelum deploy (skema additive → aman untuk
       # kode lama). Idempotent: hanya menerapkan entri jurnal yang belum ada.
       # Gagal migrasi = workflow berhenti = deploy dibatalkan.
@@ -42,10 +54,19 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull Vercel Environment Info
-        run: vercel pull --yes --environment=production --cwd ./server
+        working-directory: ./server
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
       - name: Build Project Artifacts
-        run: vercel build --prod --cwd ./server
+        working-directory: ./server
+        run: vercel build --prod --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy Artifacts to Vercel
-        run: vercel deploy --prebuilt --prod --cwd ./server
+        working-directory: ./server
+        run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

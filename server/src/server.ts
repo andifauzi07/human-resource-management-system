@@ -5,6 +5,12 @@ import { configureGracefulShutdown } from "./utils/shutdown";
 
 const port = env.PORT || 9000;
 
+if (env.NODE_ENV === "production") {
+  app.get("/", (req, res) => {
+    res.redirect("/api/docs");
+  });
+}
+
 const server = app.listen(port, () => {
   logger.info(`[server]: Server is running at http://localhost:${port}`);
   logger.info(`[server]: Environment: ${env.NODE_ENV}`);

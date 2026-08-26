@@ -14,6 +14,10 @@ sourceMapSupport.install();
 
 const app: Express = express();
 
+// Berjalan di belakang proxy Vercel — percayai 1 hop agar req.ip mencerminkan
+// klien asli dari X-Forwarded-For (akurat untuk logging/rate limiting).
+app.set("trust proxy", 1);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(

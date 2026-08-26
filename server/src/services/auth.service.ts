@@ -22,7 +22,6 @@ function toPublicUser(user: User): PublicUser {
 export interface RegisterInput {
   email: string;
   password: string;
-  role?: UserRole;
 }
 
 export interface LoginInput {
@@ -53,7 +52,8 @@ export const authService = {
       .values({
         email: input.email,
         password_hash,
-        role: input.role ?? "STAFF"
+        // Registrasi publik selalu STAFF; penetapan HRD hanya via seed/admin.
+        role: "STAFF"
       })
       .returning();
 

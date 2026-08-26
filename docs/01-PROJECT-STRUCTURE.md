@@ -21,7 +21,7 @@ hris/
 ├── server/                      # Express 5 + TS (ESM) — backend
 │   ├── src/
 │   │   ├── app.ts               # Express app (TANPA listen) — export default
-│   │   ├── server.ts            # app.listen — entry dev & production non-serverless
+│   │   ├── server.ts            # app.listen — entry DEVELOPMENT LOKAL saja (prod: api/index.ts)
 │   │   ├── configs/
 │   │   │   ├── db.ts            # instance Drizzle (node-postgres), export default
 │   │   │   ├── env.ts           # load + validasi env (dotenv-flow + zod)
@@ -70,7 +70,7 @@ hris/
 
 - **`shared/` dan alias `@shared/*` BELUM ADA.** Tipe lintas frontend-backend belum disepakati; jangan asumsikan ada sampai dibuat.
 - Pola **`modules/<modul>/` + `*.repository.ts`** adalah **arsitektur target**, bukan struktur saat ini. Kode sekarang pakai folder flat `routes/` + `controllers/`. Saat menambah fitur, cocokkan dengan struktur yang ADA.
-- **Serverless entry** (`server/api/index.ts`, `vercel.json`) **belum dibuat.** Saat ini `server.ts` pakai `app.listen` (cocok untuk dev lokal). Untuk Vercel serverless function butuh penyesuaian entry — lihat `DEPLOYMENT.md`.
+- **Serverless entry** sudah ada: `server/api/index.ts` + `server/vercel.json` (rewrites `/(.*)` → `/api`). `src/server.ts` hanya untuk dev lokal. Detail deploy di `DEPLOYMENT.md`.
 - DB instance bersifat **singleton** di `configs/db.ts` (`export default db`). Impor dari sana; jangan membuat koneksi `pg` baru di tempat lain.
 
 ## `package.json` Root — Orkestrasi

@@ -28,6 +28,16 @@ jobs:
           cd server
           npm ci
 
+      # Migrasi HARUS berjalan sebelum deploy (skema additive → aman untuk
+      # kode lama). Idempotent: hanya menerapkan entri jurnal yang belum ada.
+      # Gagal migrasi = workflow berhenti = deploy dibatalkan.
+      - name: Run Database Migrations (Production)
+        run: |
+          cd server
+          npm run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 

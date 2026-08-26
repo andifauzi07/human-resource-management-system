@@ -7,7 +7,7 @@
     "dev": "cross-env NODE_ENV=development npx tsx watch src/server.ts",
     "build": "rm -rf dist && tsc && tsc-alias",
     "start": "cross-env NODE_ENV=production node dist/server.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.api.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "cross-env NODE_ENV=development drizzle-kit studio",

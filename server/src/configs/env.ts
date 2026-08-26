@@ -1,5 +1,7 @@
 import dotenv from "dotenv-flow";
-dotenv.config();
+// Tanpa NODE_ENV eksplisit (mis. tooling CLI), fallback ke development
+// sehingga .env.development selalu terbaca.
+dotenv.config({ default_node_env: "development" });
 import { z } from "zod";
 
 export const envSchema = z.object({
@@ -7,7 +9,8 @@ export const envSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
 
-  PORT: z.string().regex(/^\d+$/, "PORT must be a number").transform(Number),
+  // Opsional: Vercel Functions tidak menyediakan PORT; default untuk dev lokal.
+  PORT: z.coerce.number().int().positive().default(9000),
 
   DATABASE_URL: z.url(),
 
@@ -31,7 +34,12 @@ export const envSchema = z.object({
 
   JWT_REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
 
-  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(4).max(20).default(10)
+  BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(4).max(20).default(10),
+
+  ENABLE_DOCS: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform(value => value === "true")
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -39,9 +47,11 @@ export type Env = z.infer<typeof envSchema>;
 const result = envSchema.safeParse(process.env);
 
 if (!result.success) {
-  console.error("❌ Invalid environment configuration");
-  console.error(z.prettifyError(result.error));
-  process.exit(1);
+  // Throw (bukan process.exit) agar platform serverless melaporkan
+  // penyebab kegagalan cold start dengan jelas.
+  throw new Error(
+    `Konfigurasi environment tidak valid:\n${z.prettifyError(result.error)}`
+  );
 }
 
 export const env: Readonly<Env> = Object.freeze(result.data);

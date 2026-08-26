@@ -13,12 +13,13 @@ server/dist/
 
 # ==========================================
 # 3. ENVIRONMENT VARIABLES (Data Rahasia)
+#    Semua varian .env* diabaikan KECUALI:
+#    - .env.example        (template, tanpa rahasia)
+#    - .env.development    (default dev lokal non-rahasia)
 # ==========================================
-**/.env
-**/.env.local
-**/.env.development.local
-**/.env.test.local
-**/.env.production.local
+**/.env*
+!**/.env.example
+!**/.env.development
 
 # ==========================================
 # 4. LOGS (Catatan Error/Sistem)

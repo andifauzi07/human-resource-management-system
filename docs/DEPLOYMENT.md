@@ -25,24 +25,29 @@ Saat setup project baru di Vercel, pilih **"Root Directory"** sesuai folder masi
 
 ---
 
-## 2. Menyesuaikan `server/` agar Jalan sebagai Serverless Function 🚧
+## 2. Server sebagai Serverless Function ✅
 
-Express biasa jalan dengan `app.listen(PORT)` (`server/src/server.ts`). Di Vercel, tiap request masuk lewat serverless function — butuh entry point khusus. **Ini belum di-setup** (belum ada `server/api/index.ts` maupun `vercel.json`).
+Entry serverless ada di `server/api/index.ts` (mengimpor `app` dari `src/app`, **tanpa** `app.listen`). `src/server.ts` hanya untuk development lokal.
 
-Rencana struktur tambahan di `server/`:
 ```
 server/
 ├── api/
-│   └── index.ts          # entry serverless Vercel (import app dari src/app)
-├── vercel.json           # rewrites + crons
+│   └── index.ts          # entry serverless Vercel (@vercel/node membungkus Express app)
+├── vercel.json           # rewrites semua path → /api
 └── package.json
 ```
-- `src/app.ts` sudah benar dipisah dari `listen` (export default app, tanpa `app.listen`) — syarat mutlak agar bisa diimpor Vercel.
-- `server.ts` tetap untuk dev lokal saja.
-- `vercel.json` (rencana):
-  ```json
-  { "rewrites": [ { "source": "/(.*)", "destination": "/api" } ] }
-  ```
+
+`vercel.json` aktual:
+```json
+{
+  "buildCommand": "npm run build",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}
+```
+- `buildCommand` dipertahankan sebagai gerbang kualitas tipe saat deploy.
+- `dist/` **tidak** dilayani sebagai output statis (kode tidak terekspos publik).
+- `swagger.json` ikut ter-bundle otomatis karena diimpor statis di `configs/swagger.ts`.
+- Swagger UI dikontrol flag `ENABLE_DOCS` — flag nonaktif → `/api/docs` merespons 404.
 
 ---
 
@@ -76,9 +81,10 @@ Karena client & server beda domain, origin diizinkan lewat env var **`CORS_ORIGI
 
 Env var di project `hris-api` (server) di Vercel Dashboard:
 ```
-CORS_ORIGIN=https://hris.vercel.app
+CORS_ORIGIN=https://hrd-management-system.vercel.app
 ```
-Untuk preview deployment (tiap PR dapat URL unik), izinkan pattern `*.vercel.app` atau pakai `process.env.VERCEL_ENV` untuk logic kondisional.
+Origin ini juga menjadi allowlist `originGuard` untuk endpoint konsumen cookie refresh.
+Preview deployment untuk server dimatikan (lihat §5a), sehingga tidak perlu pola wildcard tambahan.
 
 ---
 
@@ -86,17 +92,52 @@ Untuk preview deployment (tiap PR dapat URL unik), izinkan pattern `*.vercel.app
 
 | Variable | `hris-web` (client) | `hris-api` (server) |
 |---|---|---|
-| `VITE_API_BASE_URL` | ✅ (`https://hris-api.vercel.app`) | ❌ |
-| `NODE_ENV` | ❌ | ✅ (`production`) |
-| `PORT` | ❌ | ✅ (`9000`) |
-| `DATABASE_URL` | ❌ | ✅ (pooled connection string) |
+| `VITE_API_BASE_URL` | ✅ (`https://hriss-api.vercel.app`) | ❌ |
+| `NODE_ENV` | ❌ | ✅ (`production`; Vercel juga men-set otomatis) |
+| `PORT` | ❌ | ❌ (opsional, default 9000 — Vercel Functions tidak memakainya) |
+| `DATABASE_URL` | ❌ | ✅ (pooled connection string Neon production) |
 | `LOG_LEVEL` | ❌ | ✅ (`info`) |
-| `CORS_ORIGIN` | ❌ | ✅ |
-| `JWT_SECRET` / `JWT_REFRESH_SECRET` | ❌ | 🚧 (saat Auth dibuat) |
+| `CORS_ORIGIN` | ❌ | ✅ (`https://hrd-management-system.vercel.app`) |
+| `ENABLE_DOCS` | ❌ | ✅ (`true` — Swagger publik sebagai fitur portofolio) |
+| `JWT_SECRET` / `REFRESH_SECRET` | ❌ | ✅ (nilai kuat & unik, ≠ secret development) |
 | `CRON_SECRET` | ❌ | 🚧 (saat Cron dibuat) |
 
 Set di **Vercel Dashboard → Project Settings → Environment Variables** masing-masing project.
-Di `client`, base URL API direncanakan diambil dari `import.meta.env.VITE_API_BASE_URL` (belum dipakai karena frontend masih scaffold).
+Development lokal TIDAK memakai kredensial produksi sama sekali — default ada di
+`server/.env.development` (dikomit, non-rahasia), rahasia pribadi di
+`server/.env.development.local` (gitignored).
+
+### Secret tambahan di GitHub (repo)
+
+| Secret | Nilai |
+|---|---|
+| `PROD_DATABASE_URL` | Pooled connection string database Neon **production** — dipakai step migrasi CI sebelum deploy |
+
+---
+
+## 5a. Database: Development Lokal vs Production
+
+```
+LAPTOP                                    CLOUD
+Postgres lokal (docker-compose.yml)       Neon production (satu DB)
+  ▲ dev/migrate/seed                        ▲ DATABASE_URL (Vercel Prod env)
+  └── jurnal migrations/ (git) ═══════════► db:migrate via GitHub Actions,
+                                              SEBELUM vercel deploy
+```
+
+- **Dev**: `docker compose up -d` di root repo (Postgres versi mayor disamakan dengan Neon), lalu `npm run db:migrate --prefix server && npm run db:seed --prefix server`. Reset total: `docker compose down -v`.
+- **Prod**: skema dikonvergensikan lewat replay jurnal migrasi yang sama. Step `Run Database Migrations (Production)` di `deploy-server.yml` berjalan **sebelum** `vercel deploy`; migrasi idempotent dan gagal-migrasi membatalkan deploy.
+- Migrasi bersifat additive per modul (tabel baru) sehingga urutan migrate→deploy aman untuk kode lama.
+- Kredensial produksi HANYA hidup di GitHub Secrets dan Vercel Dashboard — tidak pernah di file lokal.
+- **Preview Deployment untuk `hris-api` DIMATIKAN** (Project Settings → Git) — tidak ada environment preview, pengujian pra-push dilakukan lokal.
+
+### Checklist manual Vercel Dashboard (sekali setup)
+
+- [ ] Project `hris-api`: matikan **Preview Deployment** (Settings → Git)
+- [ ] Set `ENABLE_DOCS=true` pada environment Production (atau biarkan default)
+- [ ] Verifikasi `DATABASE_URL` Production = pooled connection string Neon
+- [ ] Aktifkan **Vercel Firewall** dasar (proteksi rate tingkat platform)
+- [ ] Tambahkan secret repo GitHub `PROD_DATABASE_URL`
 
 ---
 
@@ -124,20 +165,23 @@ git diff --quiet HEAD^ HEAD -- ./
 
 | Aspek | Dev Lokal | Production (Vercel) |
 |---|---|---|
-| Server entry | `src/server.ts` (`app.listen`) | `api/index.ts` 🚧 (serverless) |
-| Cron | `node-cron` in-process 🚧 | Vercel Cron → API route 🚧 |
+| Server entry | `src/server.ts` (`app.listen`) | `api/index.ts` (serverless) ✅ |
+| Database | Postgres lokal (Docker Compose) | Neon production |
+| DB connection | Direct (`localhost:5432`) | Pooled connection string |
+| Migrasi skema | Manual lokal (`db:migrate`) | Otomatis di CI, sebelum deploy ✅ |
 | CORS origin | `http://localhost:5173` | `CORS_ORIGIN` env var |
-| DB connection | Direct | Pooled connection string |
+| Swagger docs | Aktif (`ENABLE_DOCS=true` default) | Flag `ENABLE_DOCS` (portfolio: aktif) |
+| Preview deploy | — | Dimatikan untuk `hris-api` |
 | API base URL (client) | `http://localhost:9000` | `VITE_API_BASE_URL` 🚧 |
 
 ---
 
-## 9. Checklist Sebelum Deploy Pertama Kali
-- [ ] `server/src/app.ts` terpisah dari `server.ts` (sudah — tidak ada `app.listen` di app.ts)
-- [ ] `server/vercel.json` 🚧 (rewrites + crons) — belum dibuat
-- [ ] `server/api/index.ts` 🚧 — belum dibuat
-- [ ] Environment variables lengkap di kedua project Vercel
-- [ ] `DATABASE_URL` pakai pooled connection string (port `6543`), bukan direct
-- [ ] `CORS_ORIGIN` sudah sesuai domain client production
+## 9. Checklist Sebelum Deploy
+- [x] `server/api/index.ts` + `vercel.json` rewrites ✅
+- [x] Migrasi produksi otomatis via CI sebelum deploy ✅
+- [ ] Environment variables lengkap di kedua project Vercel (termasuk `ENABLE_DOCS`)
+- [ ] Secret repo GitHub `PROD_DATABASE_URL` dibuat (pooled connection string)
+- [ ] `CORS_ORIGIN` production = domain client (`https://hrd-management-system.vercel.app`)
+- [ ] Preview Deployment `hris-api` dimatikan + Firewall dasar aktif
 - [ ] `CRON_SECRET` divalidasi di setiap cron handler (saat Cron dibuat)
 - [ ] Uji endpoint cron manual (`curl` + header Authorization) sebelum mengandalkan jadwal otomatis

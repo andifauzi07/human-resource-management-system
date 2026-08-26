@@ -7,11 +7,12 @@ dist
 build
 coverage
 
-# environment variables
+# environment variables — semua rahasia diabaikan;
+# pengecualian: .env.example (template) dan .env.development (default lokal non-rahasia)
 .env
-.env.development
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.development
 
 # logs
 logs

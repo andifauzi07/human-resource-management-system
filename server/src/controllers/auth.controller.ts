@@ -8,13 +8,14 @@ import env from "../configs/env";
 
 export const REFRESH_COOKIE_NAME = "refreshToken";
 
+// Registrasi publik TIDAK menerima field role — user baru selalu STAFF;
+// penetapan HRD hanya lewat seed/admin (mencegah eskalasi privilese).
 const registerSchema = z.object({
   email: z.string().email("Email tidak valid"),
   password: z
     .string()
     .min(8, "Password minimal 8 karakter")
-    .max(72, "Password maksimal 72 karakter"),
-  role: z.enum(["STAFF", "HRD"]).optional()
+    .max(72, "Password maksimal 72 karakter")
 });
 
 const loginSchema = z.object({
@@ -25,8 +26,11 @@ const loginSchema = z.object({
 function setRefreshCookie(res: Response, token: string): void {
   res.cookie(REFRESH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax",
+    // FE (hrd-management-system.vercel.app) dan BE (hriss-api.vercel.app)
+    // lintas-situs (*.vercel.app di Public Suffix List) → wajib None+Secure
+    // agar cookie terkirim; mitigasi CSRF lewat originGuard di route.
+    secure: true,
+    sameSite: "none",
     maxAge: parseExpiryToMs(env.JWT_REFRESH_TOKEN_EXPIRES_IN)
   });
 }
@@ -34,8 +38,8 @@ function setRefreshCookie(res: Response, token: string): void {
 function clearRefreshCookie(res: Response): void {
   res.clearCookie(REFRESH_COOKIE_NAME, {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax"
+    secure: true,
+    sameSite: "none"
   });
 }
 

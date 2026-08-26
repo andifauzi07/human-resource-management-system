@@ -5,40 +5,43 @@ Selamat datang! Dokumen ini memandu kamu dari clone repo sampai bisa submit PR p
 ## 1. Prasyarat
 - Node.js LTS terbaru (cocokkan dengan versi di `server/package.json` → `@types/node`, cek versi aktif dengan `node -v`)
 - npm (bawaan Node.js)
-- PostgreSQL lokal (atau Docker) / akun Neon-Supabase untuk dev
+- Docker Desktop (untuk Postgres development lokal)
 - Git
 
 ## 2. Setup Awal
 ```bash
 git clone <repo-url> hris && cd hris
 npm run install:all              # install dependency di root, client, dan server sekaligus
+docker compose up -d             # Postgres development lokal (host port 5433 → menghindari bentrok PG native)
 ```
 
-Server pakai **dotenv-flow**, bukan satu file `.env` biasa — buat file sesuai environment:
+Environment **development sudah disediakan** lewat `server/.env.development`
+(dikomit, non-rahasia — menunjuk ke Docker lokal). Rahasia pribadi/override
+hanya bila perlu, di `server/.env.development.local` (gitignored):
 ```bash
 cd server
-cp .env.example .env.development
+cp .env.example .env.development.local   # opsional
 ```
-Isi minimal `.env.development` (divalidasi oleh `src/configs/env.ts` via Zod):
-```
-NODE_ENV="development"
-PORT="9000"
-DATABASE_URL="postgresql://user:pass@localhost:5432/hris"
-LOG_LEVEL="info"
-CORS_ORIGIN="http://localhost:5173"
-```
-> `dotenv-flow` otomatis memuat `.env`, `.env.local`, `.env.<NODE_ENV>`, `.env.<NODE_ENV>.local`. `JWT_SECRET`/`CRON_SECRET` **belum dibutuhkan** karena Auth & Cron masih rencana.
+Variabel divalidasi oleh `src/configs/env.ts` via Zod. Kredensial database
+**production tidak pernah ada di laptop** — hanya di GitHub Secrets
+(`PROD_DATABASE_URL`) dan Vercel Dashboard.
+> `dotenv-flow` memuat `.env.development` lalu menimpanya dengan `.env.development.local` bila ada.
 
 ## 3. Setup Database (Drizzle)
 ```bash
+npm run db:migrate --prefix server    # apply migration ke database lokal
+npm run db:seed --prefix server       # user demo (staff@demo.hris / hrd@demo.hris)
+```
+Generate migration baru setelah mengubah schema:
+```bash
 npm run db:generate --prefix server   # generate migration dari drizzle schema (src/drizzle/schemas/)
-npm run db:migrate --prefix server    # apply migration ke database
 ```
 Untuk lihat/edit data lewat GUI:
 ```bash
 npm run db:studio --prefix server     # buka Drizzle Studio
 ```
-> Belum ada script seed otomatis (Drizzle tidak punya konvensi bawaan seperti `prisma db seed`). Kalau perlu data dummy, buat `server/src/drizzle/seed.ts` dan jalankan manual: `npx tsx server/src/drizzle/seed.ts`.
+Reset total data dev: `docker compose down -v && docker compose up -d` lalu migrate + seed ulang.
+Migrasi ke **production** terjadi otomatis di CI (`deploy-server.yml`, step sebelum deploy) — jangan jalankan manual ke produksi dari laptop.
 
 ## 4. Jalankan Dev Server
 ```bash

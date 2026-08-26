@@ -1,3 +1,5 @@
+// Entry DEVELOPMENT LOKAL saja (app.listen) — jalankan via `npm run dev`.
+// Entry production/serverless Vercel ada di api/index.ts.
 import app from "./app";
 import env from "./configs/env";
 import { logger } from "./utils/logger";

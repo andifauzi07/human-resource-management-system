@@ -1,4 +1,6 @@
-name: Deploy Server to Vercel
+# Deploy aplikasi ditangani Vercel Git Integration (build & deploy di infra Vercel).
+# Workflow ini KHUSUS menjalankan migrasi database production — satu hal, dan benar.
+name: Server DB Migrations (Production)
 
 on:
   push:
@@ -6,12 +8,8 @@ on:
     paths:
       - 'server/**'
 jobs:
-  deploy:
+  migrate:
     runs-on: ubuntu-latest
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -40,33 +38,12 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
 
-      # Migrasi HARUS berjalan sebelum deploy (skema additive → aman untuk
-      # kode lama). Idempotent: hanya menerapkan entri jurnal yang belum ada.
-      # Gagal migrasi = workflow berhenti = deploy dibatalkan.
+      # Migrasi idempotent: hanya menerapkan entri jurnal yang belum ada.
+      # Skema per modul bersifat additive sehingga aman terhadap kode yang
+      # sedang di-build paralel oleh Vercel Git Integration.
       - name: Run Database Migrations (Production)
         run: |
           cd server
           npm run db:migrate
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
-
-      - name: Pull Vercel Environment Info
-        working-directory: ./server
-        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Project Artifacts
-        working-directory: ./server
-        run: vercel build --prod --token "$VERCEL_TOKEN"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-
-      - name: Deploy Artifacts to Vercel
-        working-directory: ./server
-        run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

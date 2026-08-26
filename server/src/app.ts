@@ -6,7 +6,6 @@ import morgan from "morgan";
 import { notFoundHandler } from "./middlewares/not-found-handler";
 import { errorHandler } from "./middlewares/error-handler";
 import { setupSwagger } from "./configs/swagger";
-import healthRoutes from "./routes/health.routes";
 import authRoutes from "./routes/auth.routes";
 
 import sourceMapSupport from "source-map-support";
@@ -25,19 +24,31 @@ app.use(
     credentials: true
   })
 );
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "script-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdnjs.cloudflare.com"
+        ],
+        "style-src": [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdnjs.cloudflare.com"
+        ],
+        "img-src": ["'self'", "data:", "https://cdnjs.cloudflare.com"]
+      }
+    }
+  })
+);
 app.use(cookieParser());
 app.use(morgan(process.env.NODE_ENV === "development" ? "dev" : "combined"));
 
 //? Swagger Setup
 setupSwagger(app);
-
-//? Routes
-app.get("/", (req: Request, res: Response) => {
-  res.redirect("/api/v1/health");
-});
-
-app.use("/api/v1/health", healthRoutes);
 app.use("/api/v1/auth", authRoutes);
 
 // Not found handler (should be after routes)

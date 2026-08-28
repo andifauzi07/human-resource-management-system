@@ -11,7 +11,8 @@
 		"format:fix": "npm run format:fix --prefix server",
 		"typecheck": "npm run typecheck --prefix client && npm run typecheck --prefix server",
 		"build": "npm run build --prefix client && npm run build --prefix server",
-		"prepare": "husky"
+		"prepare": "husky",
+		"test": "npm run test --prefix server"
 	},
 	"devDependencies": {
 		"concurrently": "^9.0.0",

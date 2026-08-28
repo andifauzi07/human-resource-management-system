@@ -4,15 +4,13 @@ import {
   login,
   logout,
   me,
-  refresh,
-  register
+  refresh
 } from "../controllers/auth.controller";
 import { originGuard } from "../middlewares/origin-guard";
 import { authGuard, rbacGuard } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post("/register", register);
 router.post("/login", login);
 // Endpoint konsumen cookie refresh dilindungi originGuard (mitigasi CSRF
 // karena cookie SameSite=None diizinkan lintas-situs).

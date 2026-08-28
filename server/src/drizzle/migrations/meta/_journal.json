@@ -8,6 +8,13 @@
       "when": 1787656301800,
       "tag": "0000_illegal_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787876608346,
+      "tag": "0001_graceful_black_panther",
+      "breakpoints": true
     }
   ]
 }

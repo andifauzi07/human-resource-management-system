@@ -68,11 +68,19 @@ src/
 Frontend memakai struktur berbasis fitur (feature-based) — sudah terimplementasi sejak login UI:
 ```
 src/
-├── routes/                  # file-based routing TanStack Router (__root, index, login)
-├── features/auth/           # logika fitur: session.ts, redirect.ts,
-│   │                        # components/login-form.tsx, schemas/login.schema.ts
+├── routes/                  # file-based routing TanStack Router
+│   ├── __root.tsx           # root (<Outlet/>)
+│   ├── login.tsx            # publik, di luar shell
+│   └── _app/                # route group layout TERPROTEKSI (app shell)
+│       ├── route.tsx        # guard sesi + sidebar + topbar + <Outlet/>
+│       └── index.tsx        # dashboard placeholder
+├── features/
+│   ├── auth/                # logika fitur: session.ts, redirect.ts,
+│   │   │                    # components/login-form.tsx, schemas/login.schema.ts
+│   ├── shell/               # app shell: components/{app-shell,sidebar,topbar}.tsx,
+│   │                        # navigation.tsx (konfigurasi nav terpusat role-aware)
 │   ├── {employees,leave,attendance,payroll}/   # menyusul per modul bisnis
-├── components/ui/           # primitif shadcn/ui (button, input, label, card, spinner)
+├── components/ui/           # primitif shadcn/ui (button, input, label, card, spinner, separator, avatar, dropdown-menu)
 ├── store/                   # zustand (auth.store.ts) — folder tunggal "store"
 ├── lib/
 │   ├── api.ts               # wrapper fetch ke backend + auto-refresh 401
@@ -81,6 +89,12 @@ src/
 ```
 Aturan penggayaan UI mengacu pada `docs/DESIGN-SYSTEM.md` (wajib). TanStack Query (`hooks/`)
 menyusul saat modul data pertama dibuat; env client: `VITE_API_URL` (termasuk `/api/v1`).
+
+> **App shell (2026-08-28):** seluruh halaman terproteksi berada di route group `_app/`.
+> Guard sesi (`beforeLoad` + `restoreSession()` + `redirect` ke `/login`) dan logout dipegang
+> di level shell (`_app/route.tsx` + `features/shell/components/topbar.tsx`), bukan per-halaman.
+> Menu sidebar di-render dari `features/shell/navigation.tsx` (terpusat, role-aware, item
+> modul belum diimplementasi ditandai disabled).
 
 ---
 

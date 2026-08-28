@@ -57,6 +57,9 @@ Katalog awal:
 | Label | `components/ui/label.tsx` | Wajib untuk setiap input |
 | Card (+ Header/Title/Description/Content/Footer) | `components/ui/card.tsx` | Wadah konten standar |
 | Spinner | `components/ui/spinner.tsx` | Indikator loading tunggal |
+| Separator | `components/ui/separator.tsx` | Pemisah visual (nav, konten) |
+| Avatar (+ Fallback/pra) | `components/ui/avatar.tsx` | Representasi identitas pengguna |
+| DropdownMenu | `components/ui/dropdown-menu.tsx` | Menu kontekstual / aksi terlipat |
 
 ### 2.1 Aturan penggunaan Button
 
@@ -74,6 +77,26 @@ Katalog awal:
   dalam wrapper `grid gap-2`.
 - Kartu autentikasi dipusatkan vertikal: parent `flex min-h-svh items-center justify-center`.
 - Judul halaman konsisten: `CardTitle` atau `text-lg font-semibold tracking-tight`.
+
+### 3.1 App Shell (layout terproteksi)
+
+Seluruh halaman terproteksi dirender di **app shell** (route group `_app/`): sidebar
+di kiri + topbar di atas + konten `<Outlet/>`; halaman publik (login) berada di luar
+shell. Header content dibungkus `mx-auto w-full max-w-5xl py-8 px-6` pada area konten.
+
+- **Sidebar** (`features/shell/components/sidebar.tsx`): lebar tetap `w-64`, latar `bg-card`
+  + border kanan; menu di-render dari konfigurasi **`features/shell/navigation.tsx`**
+  yang terpusat & role-aware — jangan hardcode menu di komponen lain. Item modul yang
+  belum diimplementasi ditandai `disabled` (non-interaktif).
+- **Topbar** (`features/shell/components/topbar.tsx`): tinggi `h-16`, border bawah; menampilkan
+  identitas user (`Avatar` + email + badge role) dan tombol `Keluar` (outline, `sm`,
+  disabled + Spinner saat proses). Logout & guard sesi dipegang level shell, bukan
+  per-halaman.
+- **Primitif shell**: `Separator`, `Avatar`, `DropdownMenu` (bila dipakai) dari
+  `components/ui/`.
+- **Guard sesi**: `routes/_app/route.tsx` memanggil `restoreSession()` di `beforeLoad`
+  dan `throw redirect` ke `/login?redirect=` bila tanpa sesi; route anak tidak perlu
+  guard sendiri.
 
 ---
 

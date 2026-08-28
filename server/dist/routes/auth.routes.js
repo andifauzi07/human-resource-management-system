@@ -1,9 +1,8 @@
 import { Router } from "express";
-import { hrdArea, login, logout, me, refresh, register } from "../controllers/auth.controller.js";
+import { hrdArea, login, logout, me, refresh } from "../controllers/auth.controller.js";
 import { originGuard } from "../middlewares/origin-guard.js";
 import { authGuard, rbacGuard } from "../middlewares/auth.middleware.js";
 const router = Router();
-router.post("/register", register);
 router.post("/login", login);
 // Endpoint konsumen cookie refresh dilindungi originGuard (mitigasi CSRF
 // karena cookie SameSite=None diizinkan lintas-situs).

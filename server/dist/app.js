@@ -7,6 +7,8 @@ import { notFoundHandler } from "./middlewares/not-found-handler.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 import { setupSwagger } from "./configs/swagger.js";
 import authRoutes from "./routes/auth.routes.js";
+import departmentRoutes from "./routes/department.routes.js";
+import employeeRoutes from "./routes/employee.routes.js";
 import env from "./configs/env.js";
 import { logger } from "./utils/logger.js";
 import { configureGracefulShutdown } from "./utils/shutdown.js";
@@ -48,6 +50,8 @@ app.get("/", (_, res) => {
 //? Swagger Setup
 setupSwagger(app);
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/departments", departmentRoutes);
+app.use("/api/v1/employees", employeeRoutes);
 // Not found handler (should be after routes)
 app.use(notFoundHandler);
 // Global error handler (should be last)

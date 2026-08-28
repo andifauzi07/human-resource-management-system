@@ -87,20 +87,16 @@ Kontrak token: access JWT disimpan di memori frontend (zustand) dan dikirim via 
 - **WHEN** inspeksi `document.cookie` di browser
 - **THEN** refresh token TIDAK muncul karena flag `HttpOnly`
 
-### Requirement: Registrasi publik selalu menghasilkan role STAFF
-Endpoint registrasi publik HARUS mengabaikan field `role` dari request body; setiap user baru yang mendaftar sendiri HARUS mendapat role `STAFF`. Penetapan role `HRD` HANYA boleh dilakukan lewat seed atau alur administratif internal, tidak melalui endpoint publik mana pun.
+### Requirement: Pembuatan akun hanya melalui HRD
+Endpoint registrasi publik (`/api/v1/auth/register`) telah DIHAPUS. Pembuatan akun user HANYA dilakukan oleh HRD melalui endpoint `POST /api/v1/employees` yang otomatis membuat user account dengan role STAFF.
 
-#### Scenario: Registrasi dengan field role berisi HRD
-- **WHEN** `POST /api/v1/auth/register` mengirim `{ email, password, role: "HRD" }`
-- **THEN** user dibuat dengan role `STAFF` dan response TIDAK memuat role `HRD`
+#### Scenario: HRD membuat karyawan
+- **WHEN** HRD memanggil `POST /api/v1/employees` dengan data karyawan valid
+- **THEN** employee record dibuat, DAN user account dibuat otomatis dengan role STAFF, email auto-generated, password auto-generated
 
-#### Scenario: Registrasi tanpa field role
-- **WHEN** `POST /api/v1/auth/register` mengirim `{ email, password }` valid
-- **THEN** user dibuat dengan role `STAFF`
-
-#### Scenario: Skema Zod menolak/mengabaikan role
-- **WHEN** payload registrasi divalidasi oleh schema Zod
-- **THEN** field `role` TIDAK ADA dalam skema publik sehingga tidak pernah sampai ke service layer
+#### Scenario: Tidak ada registrasi publik
+- **WHEN** user mencoba mengakses `POST /api/v1/auth/register`
+- **THEN** sistem mengembalikan 404 (endpoint tidak ditemukan)
 
 ### Requirement: Validasi Origin pada endpoint konsumen cookie refresh
 Endpoint yang mengonsumsi cookie refresh (`POST /api/auth/refresh`, `POST /api/auth/logout`) HARUS menolak request dengan status 403 ketika header `Origin` ada dan nilainya tidak termasuk daftar origin yang diizinkan (`CORS_ORIGIN`). Request tanpa header `Origin` (klien non-browser seperti curl) HARUS diteruskan. Validasi ini adalah mitigasi CSRF karena `SameSite=None` mengizinkan pengiriman cookie lintas-situs.

@@ -7,10 +7,7 @@ export const departmentService = {
     async createDepartment(input) {
         const [created] = await db
             .insert(departmentsTable)
-            .values({
-            name: input.name,
-            manager_id: input.manager_id
-        })
+            .values(input)
             .returning();
         return created;
     },
@@ -29,7 +26,7 @@ export const departmentService = {
         return db.select().from(departmentsTable);
     },
     async updateDepartment(id, input) {
-        const existing = await this.getDepartmentById(id);
+        await this.getDepartmentById(id);
         const [updated] = await db
             .update(departmentsTable)
             .set({

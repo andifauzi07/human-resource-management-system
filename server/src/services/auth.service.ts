@@ -52,7 +52,6 @@ export const authService = {
       .values({
         email: input.email,
         password_hash,
-        // Registrasi publik selalu STAFF; penetapan HRD hanya via seed/admin.
         role: "STAFF"
       })
       .returning();

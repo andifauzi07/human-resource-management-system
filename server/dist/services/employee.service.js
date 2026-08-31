@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import db from "../configs/db.js";
 import { employeesTable } from "../drizzle/schemas/employee.schema.js";
+import { departmentsTable } from "../drizzle/schemas/department.schema.js";
 import { usersTable } from "../drizzle/schemas/user.schema.js";
 import { ApiError } from "../utils/api-error.js";
 import { hashPassword } from "../utils/auth.js";
@@ -118,10 +119,16 @@ export const employeeService = {
         if (!existing) {
             throw ApiError.notFound("Employee tidak ditemukan");
         }
-        await db
-            .update(employeesTable)
-            .set({ status: "INACTIVE", updated_at: new Date() })
-            .where(eq(employeesTable.id, id));
+        await db.transaction(async (tx) => {
+            await tx
+                .update(employeesTable)
+                .set({ status: "INACTIVE", updated_at: new Date() })
+                .where(eq(employeesTable.id, id));
+            await tx
+                .update(departmentsTable)
+                .set({ manager_id: null, updated_at: new Date() })
+                .where(eq(departmentsTable.manager_id, id));
+        });
     },
     async resetPassword(id) {
         const [employee] = await db

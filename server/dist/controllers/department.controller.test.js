@@ -16,6 +16,7 @@ function mockDept(overrides) {
         id: "1",
         name: "Engineering",
         manager_id: null,
+        manager_name: null,
         created_at: new Date(),
         updated_at: new Date(),
         ...overrides

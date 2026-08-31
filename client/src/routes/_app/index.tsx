@@ -4,6 +4,7 @@ import { useAuthStore } from "@/store/auth.store";
 import { PageHeader } from "@/components/page-header";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -11,6 +12,7 @@ import {
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
+import { useDepartments } from "@/features/departments/hooks";
 
 export const Route = createFileRoute("/_app/")({
   component: DashboardPage
@@ -19,13 +21,19 @@ export const Route = createFileRoute("/_app/")({
 function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const isHRD = user?.role === "HRD";
+  const { data: departments, isLoading: departmentsLoading } =
+    useDepartments();
+
+  const departmentValue = departmentsLoading
+    ? <Skeleton className="h-7 w-10" />
+    : String(departments?.length ?? 0);
 
   const stats = isHRD
     ? [
         { label: "Karyawan", value: "--", icon: Users, hint: "Modul menyusul" },
         { label: "Cuti", value: "--", icon: CalendarDays, hint: "Menunggu persetujuan" },
         { label: "Absensi", value: "--", icon: MapPin, hint: "Kehadiran hari ini" },
-        { label: "Department", value: "--", icon: Building2, hint: "Struktur organisasi" }
+        { label: "Department", value: departmentValue, icon: Building2, hint: "Struktur organisasi" }
       ]
     : [
         { label: "Cuti tersisa", value: "--", icon: CalendarDays, hint: "Kuota tahun berjalan" },

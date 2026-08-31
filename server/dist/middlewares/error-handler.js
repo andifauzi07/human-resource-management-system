@@ -1,3 +1,4 @@
+import { ZodError } from "zod";
 import env from "../configs/env.js";
 import { ApiError } from "../utils/api-error.js";
 import { logger } from "../utils/logger.js";
@@ -12,6 +13,16 @@ export const errorHandler = (err, req, res, next) => {
         statusCode = err.statusCode;
         message = err.message;
         errors = err.errors;
+    }
+    else if (err instanceof ZodError) {
+        statusCode = 400;
+        message = err.issues[0]?.message ?? "Input tidak valid";
+        const fieldErrors = {};
+        for (const issue of err.issues) {
+            const key = String(issue.path[0] ?? "unknown");
+            fieldErrors[key] ??= issue.message;
+        }
+        errors = fieldErrors;
     }
     logger.error(err, `Error: ${message} | Status: ${statusCode} | Path: ${req.method} ${req.originalUrl}`);
     const response = {

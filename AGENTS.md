@@ -58,7 +58,7 @@ npm run lint && npm run typecheck && npm run build
 ```
 
 - **CI (GitHub Actions) hanya deploy** — tidak menjalankan lint/typecheck/build. Checklist lokal adalah satu-satunya gerbang kualitas.
-- **Test runner belum terpasang** (lihat `docs/TESTING.md`); jangan asumsikan `npm test` ada. Bila diminta menambah test, pasang Vitest dulu sesuai TESTING.md.
+- **Test runner terpasang di `server/`** (Vitest). Jalankan via `npm test --prefix server`. `client/` belum punya test runner — jangan asumsikan `npm test --prefix client` ada. Lihat `docs/TESTING.md`.
 
 ## Gotchas
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
 import * as departmentController from "./department.controller";
 import departmentService from "../services/department.service";
-import type { Department } from "../drizzle/schemas/department.schema";
+import type { DepartmentWithManager } from "../services/department.service";
 
 vi.mock("../services/department.service", () => ({
   default: {
@@ -16,11 +16,14 @@ vi.mock("../services/department.service", () => ({
 
 const mockService = vi.mocked(departmentService);
 
-function mockDept(overrides?: Partial<Department>): Department {
+function mockDept(
+  overrides?: Partial<DepartmentWithManager>
+): DepartmentWithManager {
   return {
     id: "1",
     name: "Engineering",
     manager_id: null,
+    manager_name: null,
     created_at: new Date(),
     updated_at: new Date(),
     ...overrides

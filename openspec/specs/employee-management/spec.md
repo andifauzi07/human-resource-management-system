@@ -23,6 +23,7 @@ Kelola data karyawan HRIS: CRUD employee, auto-generate email/password, soft del
 3. User account dibuat otomatis dengan role STAFF saat create employee
 4. STAFF hanya bisa melihat profil sendiri
 5. Soft delete: status `ACTIVE` → `INACTIVE`, data tetap ada
+6. Saat soft delete (`DELETE /employees/:id`), `departments.manager_id` yang menunjuk karyawan tersebut di-set `null` di seluruh department (menjaga aturan "manager wajib berstatus ACTIVE"). Data karyawan tidak berubah selain status.
 
 ## RBAC Matrix
 

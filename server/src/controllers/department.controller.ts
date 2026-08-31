@@ -9,7 +9,11 @@ const createDepartmentSchema = z.object({
     .string()
     .min(1, "Nama wajib diisi")
     .max(100, "Nama maksimal 100 karakter"),
-  manager_id: z.string().uuid("Manager ID harus UUID valid").optional()
+  manager_id: z
+    .string()
+    .uuid("Manager ID harus UUID valid")
+    .nullable()
+    .optional()
 });
 
 const updateDepartmentSchema = z.object({
@@ -18,7 +22,11 @@ const updateDepartmentSchema = z.object({
     .min(1, "Nama wajib diisi")
     .max(100, "Nama maksimal 100 karakter")
     .optional(),
-  manager_id: z.string().uuid("Manager ID harus UUID valid").optional()
+  manager_id: z
+    .string()
+    .uuid("Manager ID harus UUID valid")
+    .nullable()
+    .optional()
 });
 
 export const create = AsyncHandler(async (req: Request, res: Response) => {

@@ -4,7 +4,8 @@ vi.mock("../configs/db", () => ({
         select: vi.fn(),
         insert: vi.fn(),
         update: vi.fn(),
-        delete: vi.fn()
+        delete: vi.fn(),
+        transaction: vi.fn()
     }
 }));
 vi.mock("../utils/password", () => ({
@@ -152,7 +153,7 @@ describe("Employee Service", () => {
         });
     });
     describe("deactivateEmployee", () => {
-        it("should set status to INACTIVE", async () => {
+        it("should set status to INACTIVE and clear manager_id of departments", async () => {
             const employee = mockEmp();
             const selectChain = mockSelectChain(employee);
             mockDb.select.mockReturnValue(selectChain);
@@ -162,8 +163,17 @@ describe("Employee Service", () => {
                 })
             };
             mockDb.update.mockReturnValue(updateChain);
+            const txUpdate = vi.fn().mockReturnValue(updateChain);
+            const tx = { update: txUpdate };
+            mockDb.transaction.mockImplementation((async (cb) => cb(tx)));
             await employeeService.deactivateEmployee("emp-123");
-            expect(mockDb.update).toHaveBeenCalled();
+            expect(mockDb.transaction).toHaveBeenCalled();
+            expect(tx.update).toHaveBeenCalledTimes(2);
+        });
+        it("should throw error if employee not found", async () => {
+            const chain = mockSelectChain([]);
+            mockDb.select.mockReturnValue(chain);
+            await expect(employeeService.deactivateEmployee("nonexistent")).rejects.toThrow("Employee tidak ditemukan");
         });
     });
     describe("resetPassword", () => {

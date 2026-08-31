@@ -44,8 +44,7 @@ export const navSections: NavSection[] = [
       {
         label: "Department",
         icon: Building2,
-        to: "/departments",
-        roles: ["HRD"]
+        to: "/departments"
       },
       {
         label: "Karyawan",

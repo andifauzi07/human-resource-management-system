@@ -1,24 +1,4 @@
-# Design System UI
-
-## Purpose
-
-Design system for UI components, styling tokens, and accessibility requirements for the HRIS client application. Arah visual: **deep indigo/violet profesional & kreatif** (modern SaaS) dengan netral sebagai dasar latar/kartu dan indigo/violet sebagai aksen (primary action, brand, ring fokus, active nav). Dark mode tetap non-goal. Enforcement bertingkat: token + primitif wajib + ESLint rule + `docs/DESIGN-SYSTEM.md` sebagai sumber kebenaran.
-
-## Requirements
-
-### Requirement: Design tokens terpusat via `@theme`
-
-Seluruh token desain (palet warna netral + aksen deep indigo/violet sebagai primary, radius, ukuran tipografi, skala shadow/depth) HARUS didefinisikan sebagai CSS variables dalam blok `@theme` pada `client/src/index.css` (cara idiomatik Tailwind v4). Komponen dan halaman TIDAK BOLEH meng-hardcode nilai warna/radius/shadow di luar token; mereka HANYA boleh merujuk utilitas/kelas yang dihasilkan token.
-
-#### Scenario: Perubahan token merambat global
-
-- **WHEN** nilai token `--color-primary` diubah di `index.css`
-- **THEN** seluruh elemen yang memakai kelas token primary (tombol, aksen) berubah tanpa penyuntingan per-komponen
-
-#### Scenario: Nilai di luar token ditolak saat review
-
-- **WHEN** sebuah komponen memakai nilai warna literal (mis. `bg-indigo-600`) yang bukan bagian token
-- **THEN** implementasi tersebut melanggar design system dan harus diganti token
+## MODIFIED Requirements
 
 ### Requirement: Arah visual deep indigo/violet profesional
 
@@ -57,14 +37,9 @@ Sidebar app shell menggunakan mode **icon-only** (kompak) dengan label tersedia 
 - **WHEN** developer menambah item menu baru
 - **THEN** cukup menambah entri di `features/shell/navigation.tsx` tanpa mengedit shell/sidebar, dan mode expanded/collapsed tidak memerlukan perubahan pada entri tersebut
 
-### Requirement: Primitif komponen bersumber shadcn/ui
+### Requirement: Primitif shadcn/ui diperluas untuk modul data-dense
 
-Primitif UI (Button, Input, Label, Card, Spinner, dan seterusnya) HARUS di-install melalui shadcn/ui ke `client/src/components/ui/` (basis Radix + cva). Katalog diperluas untuk kebutuhan modul bisnis mendatang (department/karyawan/cuti/absensi/payroll): `Badge`, `Table`, `Tabs`, `Select`, `Dialog`, `Sonner` (toast), `Skeleton`, `Tooltip`. Halaman/fitur TIDAK BOLEH mendefinisikan primitif fungsionalnya sendiri di luar folder ini; penyesuaian tampilan dilakukan lewat varian/cva atau token, bukan duplikasi komponen.
-
-#### Scenario: Form menggunakan primitif resmi
-
-- **WHEN** halaman login membangun form email/password
-- **THEN** Input, Label, dan Button diimpor dari `components/ui/`, bukan elemen bergaya manual
+Katalog primitif (dibawah `client/src/components/ui/`) diperluas untuk kebutuhan modul bisnis mendatang (department/karyawan/cuti/absensi/payroll): `Badge`, `Table`, `Tabs`, `Select`, `Dialog`, `Sonner` (toast), `Skeleton`, dan `Tooltip`. Halaman/fitur TIDAK BOLEH mendefinisikan primitif fungsionalnya sendiri di luar folder ini; penyesuaian tampilan lewat varian/cva atau token.
 
 #### Scenario: Tabel data memakai primitif resmi
 
@@ -112,12 +87,3 @@ Primitif UI (Button, Input, Label, Card, Spinner, dan seterusnya) HARUS di-insta
 
 - **WHEN** developer menambahkan halaman modul bisnis baru (mis. cuti)
 - **THEN** struktur visual (token indigo/violet, primitif, pattern, layout, feedback) konsisten dengan `docs/DESIGN-SYSTEM.md` yang baru
-
-### Requirement: Aksesibilitas dasar pada primitif
-
-Setiap input WAJIB memiliki label yang terasosiasi secara programatik; elemen interaktif WAJIB memiliki indikator fokus yang terlihat; kontras teks normal minimal 4.5:1 terhadap latarnya.
-
-#### Scenario: Form login dapat dinavigasi keyboard
-
-- **WHEN** pengguna menekan Tab pada halaman login
-- **THEN** urutan fokus melewati email → password → tombol submit dengan ring fokus terlihat pada setiap elemen

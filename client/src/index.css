@@ -2,28 +2,51 @@
 
 /*
   Design tokens HRIS — rujukan: docs/DESIGN-SYSTEM.md
-  Palet korporat bersih: netral zinc + aksen biru tua (primary).
-  Nilai dalam oklch; jangan hardcode warna di komponen, selalu rujuk token.
+  Arah visual: deep indigo/violet (profesional & kreatif, ala modern SaaS).
+  Netral tetap jadi dasar latar/teks/kartu; indigo/violet dipakai disiplin
+  untuk aksen (primary action, link, ring fokus, brand, active nav).
+
+  Nilai dalam oklch. Komponen TIDAK BOLEH hardcode warna/radius/shadow di
+  luar token — dilindungi ESLint rule `design-system/no-hardcoded-style`.
 */
 :root {
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.141 0.005 285.823);
+	--background: oklch(0.982 0.003 286);
+	--foreground: oklch(0.208 0.02 286);
+
 	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.141 0.005 285.823);
+	--card-foreground: oklch(0.208 0.02 286);
+
 	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.141 0.005 285.823);
-	--primary: oklch(0.446 0.174 262.88);
+	--popover-foreground: oklch(0.208 0.02 286);
+
+	--primary: oklch(0.457 0.24 277.023);
 	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.967 0.001 286.375);
-	--secondary-foreground: oklch(0.21 0.006 285.885);
-	--muted: oklch(0.967 0.001 286.375);
-	--muted-foreground: oklch(0.552 0.016 285.938);
-	--accent: oklch(0.967 0.001 286.375);
-	--accent-foreground: oklch(0.21 0.006 285.885);
+
+	--secondary: oklch(0.947 0.012 286);
+	--secondary-foreground: oklch(0.3 0.03 285);
+
+	--muted: oklch(0.952 0.009 286);
+	--muted-foreground: oklch(0.52 0.022 286);
+
+	--accent: oklch(0.947 0.024 280);
+	--accent-foreground: oklch(0.3 0.04 280);
+
 	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.92 0.004 286.32);
-	--input: oklch(0.92 0.004 286.32);
-	--ring: oklch(0.552 0.16 262.5);
+	--destructive-foreground: oklch(0.985 0 0);
+
+	--success: oklch(0.606 0.202 152.203);
+	--success-foreground: oklch(0.985 0 0);
+
+	--warning: oklch(0.666 0.157 58.318);
+	--warning-foreground: oklch(0.2 0.04 65);
+
+	--info: oklch(0.585 0.233 277.117);
+	--info-foreground: oklch(0.985 0 0);
+
+	--border: oklch(0.905 0.008 286);
+	--input: oklch(0.905 0.008 286);
+
+	--ring: oklch(0.511 0.262 276.966);
 	--radius: 0.5rem;
 }
 
@@ -43,13 +66,31 @@
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-success: var(--success);
+	--color-success-foreground: var(--success-foreground);
+	--color-warning: var(--warning);
+	--color-warning-foreground: var(--warning-foreground);
+	--color-info: var(--info);
+	--color-info-foreground: var(--info-foreground);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
 	--radius-xl: calc(var(--radius) + 4px);
+
+	/* Depth/hierarki: lebih tegas dari default, dengan rona indigo halus
+     agar permukaan terasa "terangkat" di atas latar netral. */
+	--shadow-2xs: 0 1px 2px 0 oklch(0.21 0.04 280 / 0.05);
+	--shadow-xs: 0 1px 3px 0 oklch(0.21 0.04 280 / 0.07);
+	--shadow-sm: 0 2px 6px -1px oklch(0.21 0.04 280 / 0.08);
+	--shadow-md: 0 6px 16px -4px oklch(0.21 0.04 280 / 0.1);
+	--shadow-lg: 0 14px 32px -8px oklch(0.21 0.05 280 / 0.14);
+	--shadow-xl: 0 24px 48px -12px oklch(0.21 0.05 280 / 0.18);
+	--shadow-2xl: 0 36px 72px -20px oklch(0.21 0.05 280 / 0.22);
 }
 
 body {

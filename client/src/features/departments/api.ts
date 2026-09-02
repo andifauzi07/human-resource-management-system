@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api";
-import type { Department, Employee } from "./types";
+import type { Employee } from "../employees/types";
+import type { Department } from "./types";
 
 export interface CreateDepartmentInput {
   name: string;

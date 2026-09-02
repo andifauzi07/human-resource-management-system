@@ -18,6 +18,11 @@ const withDepartmentProjection = {
     updated_at: employeesTable.updated_at,
     department: { id: departmentsTable.id, name: departmentsTable.name }
 };
+const employeeListItemProjection = {
+    id: employeesTable.id,
+    full_name: employeesTable.full_name,
+    position: employeesTable.position
+};
 async function getUserDepartmentId(userId) {
     const [row] = await db
         .select({ department_id: employeesTable.department_id })
@@ -67,7 +72,7 @@ export const employeeService = {
             credentials: { email, password: plainPassword }
         };
     },
-    async getEmployeeById(id, userRole, userId) {
+    async getEmployeeById(id) {
         const [employee] = await db
             .select(withDepartmentProjection)
             .from(employeesTable)
@@ -76,13 +81,6 @@ export const employeeService = {
             .limit(1);
         if (!employee) {
             throw ApiError.notFound("Employee tidak ditemukan");
-        }
-        // STAFF can only view employees in the same department
-        if (userRole === "STAFF") {
-            const departmentId = await getUserDepartmentId(userId);
-            if (employee.department_id !== departmentId) {
-                throw ApiError.forbidden("Tidak diizinkan melihat data karyawan lain");
-            }
         }
         return employee;
     },
@@ -118,9 +116,8 @@ export const employeeService = {
         }
         const departmentId = await getUserDepartmentId(userId);
         return db
-            .select(withDepartmentProjection)
+            .select(employeeListItemProjection)
             .from(employeesTable)
-            .leftJoin(departmentsTable, eq(departmentsTable.id, employeesTable.department_id))
             .where(eq(employeesTable.department_id, departmentId));
     },
     async updateEmployee(id, input) {

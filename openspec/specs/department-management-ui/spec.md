@@ -34,24 +34,24 @@ Client MUST memiliki route file-based `/departments` (`routes/_app/departments/i
 - **WHEN** request `GET /departments` gagal
 - **THEN** pesan error tampil di halaman dan pengguna dapat mencoba memuat ulang
 
-### Requirement: RBAC tampilan frontend
+### Requirement: RBAC tampilan frontend — halaman Department khusus HRD
 
-Menu "Department" di sidebar MUST terlihat oleh semua role yang sudah login (STAFF dan HRD) — tidak lagi dibatasi HRD. Pada halaman list, tombol aksi (tambah, edit, hapus) MUST ditampilkan hanya untuk role `HRD`; STAFF hanya melihat data read-only tanpa elemen aksi. Pembatasan di sisi tampilan TIDAK menggantikan otorisasi di backend (mutasi tetap dijaga `rbacGuard(["HRD"])`).
+Menu "Department" di sidebar MUST hanya terlihat oleh role `HRD` (tidak lagi untuk semua role). STAFF yang membuka rute `/departments` langsung (mis. mengetik alamat) MUST diarahkan (redirect) ke halaman Dashboard oleh guard `beforeLoad` route, sehingga halaman tersebut tidak dirender untuk STAFF. Pembatasan di sisi tampilan TIDAK menggantikan otorisasi di backend (mutasi tetap dijaga `rbacGuard(["HRD"])`).
 
-#### Scenario: Menu terlihat untuk semua role
+#### Scenario: Menu Department tidak tampil untuk STAFF
 
-- **WHEN** pengguna STAFF login dan membuka sidebar
+- **WHEN** user dengan role STAFF login dan membuka sidebar
+- **THEN** item "Department" tidak muncul; item "Karyawan" tetap tampil
+
+#### Scenario: HRD melihat menu Department
+
+- **WHEN** user dengan role HRD login dan membuka sidebar
 - **THEN** item "Department" muncul dan dapat dinavigasi
 
-#### Scenario: STAFF tidak melihat aksi
+#### Scenario: STAFF diarahkan keluar dari rute department
 
-- **WHEN** STAFF membuka `/departments`
-- **THEN** tabel read-only tanpa tombol tambah/edit/hapus
-
-#### Scenario: HRD melihat aksi
-
-- **WHEN** HRD membuka `/departments`
-- **THEN** tombol "Tambah Department" tersedia dan tiap baris memiliki aksi edit/hapus
+- **WHEN** user dengan role STAFF membuka `/departments` secara langsung
+- **THEN** guard `beforeLoad` mengarahkannya ke halaman Dashboard dan halaman department tidak dirender
 
 ### Requirement: Dialog buat dan ubah department
 

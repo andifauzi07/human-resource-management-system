@@ -13,10 +13,11 @@ export const departmentsKeys = {
   all: ["departments"] as const
 };
 
-export function useDepartments() {
+export function useDepartments(enabled = true) {
   return useQuery({
     queryKey: departmentsKeys.all,
-    queryFn: departmentsApi.list
+    queryFn: departmentsApi.list,
+    enabled
   });
 }
 

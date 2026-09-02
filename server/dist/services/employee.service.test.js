@@ -132,41 +132,17 @@ describe("Employee Service", () => {
         });
     });
     describe("getEmployeeById", () => {
-        it("should return employee with department when HRD", async () => {
+        it("should return employee with department", async () => {
             const employee = mockEmpWithDept();
             const chain = mockJoinSelectChain(employee);
             mockDb.select.mockReturnValue(chain);
-            const result = await employeeService.getEmployeeById("emp-123", "HRD", "user-456");
+            const result = await employeeService.getEmployeeById("emp-123");
             expect(result).toEqual(employee);
-        });
-        it("should return employee with department when STAFF and same department", async () => {
-            const employee = mockEmpWithDept({ department_id: "dept-123" });
-            // getEmployeeById query (leftJoin)
-            const empChain = mockJoinSelectChain(employee);
-            mockDb.select.mockReturnValueOnce(empChain);
-            // getUserDepartmentId query (innerJoin)
-            const deptChain = mockInnerJoinChain({ department_id: "dept-123" });
-            mockDb.select.mockReturnValueOnce(deptChain);
-            const result = await employeeService.getEmployeeById("emp-123", "STAFF", "user-123");
-            expect(result).toEqual(employee);
-        });
-        it("should throw 403 when STAFF tries to view employee in different department", async () => {
-            const employee = mockEmpWithDept({
-                id: "emp-other",
-                department_id: "dept-123"
-            });
-            // getEmployeeById query (leftJoin)
-            const empChain = mockJoinSelectChain(employee);
-            mockDb.select.mockReturnValueOnce(empChain);
-            // getUserDepartmentId query returns different department
-            const deptChain = mockInnerJoinChain({ department_id: "dept-999" });
-            mockDb.select.mockReturnValueOnce(deptChain);
-            await expect(employeeService.getEmployeeById("emp-other", "STAFF", "user-123")).rejects.toThrow("Tidak diizinkan melihat data karyawan lain");
         });
         it("should throw error when employee not found", async () => {
             const chain = mockJoinSelectChain([]);
             mockDb.select.mockReturnValue(chain);
-            await expect(employeeService.getEmployeeById("nonexistent", "HRD", "user-456")).rejects.toThrow("Employee tidak ditemukan");
+            await expect(employeeService.getEmployeeById("nonexistent")).rejects.toThrow("Employee tidak ditemukan");
         });
     });
     describe("listEmployees", () => {
@@ -177,18 +153,19 @@ describe("Employee Service", () => {
             const result = await employeeService.listEmployees("HRD", "user-123");
             expect(result).toEqual(employees);
         });
-        it("should return same-department employees when STAFF", async () => {
-            const employees = [mockEmpWithDept({ department_id: "dept-123" })];
+        it("should return only id, full_name, position for same-department when STAFF", async () => {
+            const items = [
+                { id: "emp-123", full_name: "John Doe", position: "Engineer" }
+            ];
             // getUserDepartmentId query
             const deptChain = mockInnerJoinChain({ department_id: "dept-123" });
             mockDb.select.mockReturnValueOnce(deptChain);
-            // list with where (leftJoin → where → resolves)
-            const listWhere = vi.fn().mockResolvedValue(employees);
-            const listLeftJoin = vi.fn().mockReturnValue({ where: listWhere });
-            const listFrom = vi.fn().mockReturnValue({ leftJoin: listLeftJoin });
+            // list with where (plain select → from → where → resolves)
+            const listWhere = vi.fn().mockResolvedValue(items);
+            const listFrom = vi.fn().mockReturnValue({ where: listWhere });
             mockDb.select.mockReturnValueOnce({ from: listFrom });
             const result = await employeeService.listEmployees("STAFF", "user-123");
-            expect(result).toEqual(employees);
+            expect(result).toEqual(items);
         });
         it("should throw 403 for roles other than HRD/STAFF", async () => {
             await expect(employeeService.listEmployees("ADMIN", "user-123")).rejects.toThrow("Role Anda tidak diizinkan melihat daftar karyawan");

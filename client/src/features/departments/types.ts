@@ -6,11 +6,3 @@ export interface Department {
   created_at: string;
   updated_at: string;
 }
-
-export interface Employee {
-  id: string;
-  department_id: string;
-  full_name: string;
-  position: string;
-  status: "ACTIVE" | "INACTIVE";
-}

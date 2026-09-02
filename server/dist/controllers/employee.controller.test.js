@@ -109,7 +109,7 @@ describe("Employee Controller", () => {
         });
     });
     describe("getById", () => {
-        it("should return employee when HRD", async () => {
+        it("should return employee by id", async () => {
             mockService.getEmployeeById.mockResolvedValue(mockEmpWithDept());
             const req = createMockReq({
                 params: { id: "emp-1" },
@@ -117,6 +117,7 @@ describe("Employee Controller", () => {
             });
             const res = createMockRes();
             await runHandler(employeeController.getById, req, res);
+            expect(mockService.getEmployeeById).toHaveBeenCalledWith("emp-1");
             expect(res.status).toHaveBeenCalledWith(200);
         });
     });

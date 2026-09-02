@@ -126,7 +126,9 @@ Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `d
 | Resource | STAFF | HRD |
 |---|---|---|
 | Lihat profil sendiri | ✅ | ✅ |
-| Lihat semua karyawan | ❌ | ✅ |
+| Lihat karyawan se-department (nama + jabatan) | ✅ | ✅ |
+| Lihat semua karyawan (detail penuh) | ❌ | ✅ |
+| Lihat detail karyawan (`GET /employees/:id`) | ❌ | ✅ |
 | Tambah/edit/hapus karyawan | ❌ | ✅ |
 | Ajukan cuti | ✅ (milik sendiri) | ✅ |
 | Approve/reject cuti | ❌ | ✅ |
@@ -198,7 +200,7 @@ Saat ini sudah ada `GET /api/v1/health` dan seluruh endpoint `POST /api/v1/auth/
 
 1. **Setup DB**: Drizzle schema lengkap + migrasi + seeder (`drizzle/schemas/`, `db:generate`, `db:migrate`).
 2. **Auth + RBAC**: **terimplementasi** (lihat `openspec/changes/add-auth`). Keputusan: token access di memori FE (zustand) + refresh di httpOnly cookie; bcryptjs; PK `uuid`; FK `users.employee_id` ditunda ke modul Employee. Auth menetapkan pola layering `routes → controller → service → middleware` untuk modul berikutnya.
-3. **Modul Employee**: CRUD + halaman frontend (di sini FK `employee_id` ke `users` dibuat).
+3. **Modul Employee**: CRUD + halaman frontend — **terimplementasi** (`features/employees/`, `routes/_app/employees/`). STAFF melihat daftar read-only (nama + jabatan) se-department via proyeksi backend per-role; `GET /employees/:id` khusus HRD; profil sendiri lewat `/employees/mine`. (FK `employee_id` ke `users` sudah dibuat sejak modul employee.)
 4. **Modul Attendance**: geolocation check-in/out.
 5. **Modul Leave**: request + approval.
 6. **Modul Overtime + Payroll** 🚧: Vercel Cron API route.

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Building2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuthStore } from "@/store/auth.store";
 import { PageHeader } from "@/components/page-header";
@@ -15,6 +15,11 @@ import { DepartmentDeleteDialog } from "@/features/departments/components/depart
 import type { Department } from "@/features/departments/types";
 
 export const Route = createFileRoute("/_app/departments/")({
+  beforeLoad: () => {
+    if (useAuthStore.getState().user?.role !== "HRD") {
+      throw redirect({ to: "/" });
+    }
+  },
   component: DepartmentsPage
 });
 

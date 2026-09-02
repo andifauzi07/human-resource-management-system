@@ -22,7 +22,7 @@ function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const isHRD = user?.role === "HRD";
   const { data: departments, isLoading: departmentsLoading } =
-    useDepartments();
+    useDepartments(isHRD);
 
   const departmentValue = departmentsLoading
     ? <Skeleton className="h-7 w-10" />

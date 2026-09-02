@@ -61,12 +61,7 @@ export const getMine = AsyncHandler(async (req, res) => {
 });
 export const getById = AsyncHandler(async (req, res) => {
     const id = String(req.params.id);
-    const userRole = req.user?.role;
-    const userId = req.user?.sub;
-    if (!userRole || !userId) {
-        throw ApiError.unauthorized("Tidak terautentikasi");
-    }
-    const employee = await employeeService.getEmployeeById(id, userRole, userId);
+    const employee = await employeeService.getEmployeeById(id);
     return ApiResponse.ok(res, "Detail employee", employee);
 });
 export const update = AsyncHandler(async (req, res) => {

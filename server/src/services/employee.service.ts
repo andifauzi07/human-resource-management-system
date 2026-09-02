@@ -39,6 +39,8 @@ export interface EmployeeWithDepartment extends Employee {
   department: Pick<Department, "id" | "name"> | null;
 }
 
+export type EmployeeListItem = Pick<Employee, "id" | "full_name" | "position">;
+
 const withDepartmentProjection = {
   id: employeesTable.id,
   department_id: employeesTable.department_id,
@@ -50,6 +52,12 @@ const withDepartmentProjection = {
   created_at: employeesTable.created_at,
   updated_at: employeesTable.updated_at,
   department: { id: departmentsTable.id, name: departmentsTable.name }
+};
+
+const employeeListItemProjection = {
+  id: employeesTable.id,
+  full_name: employeesTable.full_name,
+  position: employeesTable.position
 };
 
 async function getUserDepartmentId(userId: string): Promise<string> {
@@ -112,11 +120,7 @@ export const employeeService = {
     };
   },
 
-  async getEmployeeById(
-    id: string,
-    userRole: string,
-    userId: string
-  ): Promise<EmployeeWithDepartment> {
+  async getEmployeeById(id: string): Promise<EmployeeWithDepartment> {
     const [employee] = await db
       .select(withDepartmentProjection)
       .from(employeesTable)
@@ -129,15 +133,6 @@ export const employeeService = {
 
     if (!employee) {
       throw ApiError.notFound("Employee tidak ditemukan");
-    }
-
-    // STAFF can only view employees in the same department
-    if (userRole === "STAFF") {
-      const departmentId = await getUserDepartmentId(userId);
-
-      if (employee.department_id !== departmentId) {
-        throw ApiError.forbidden("Tidak diizinkan melihat data karyawan lain");
-      }
     }
 
     return employee;
@@ -174,7 +169,7 @@ export const employeeService = {
   async listEmployees(
     userRole: string,
     userId: string
-  ): Promise<EmployeeWithDepartment[]> {
+  ): Promise<EmployeeWithDepartment[] | EmployeeListItem[]> {
     if (userRole !== "HRD" && userRole !== "STAFF") {
       throw ApiError.forbidden(
         "Role Anda tidak diizinkan melihat daftar karyawan"
@@ -194,12 +189,8 @@ export const employeeService = {
     const departmentId = await getUserDepartmentId(userId);
 
     return db
-      .select(withDepartmentProjection)
+      .select(employeeListItemProjection)
       .from(employeesTable)
-      .leftJoin(
-        departmentsTable,
-        eq(departmentsTable.id, employeesTable.department_id)
-      )
       .where(eq(employeesTable.department_id, departmentId));
   },
 

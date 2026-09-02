@@ -44,13 +44,13 @@ export const navSections: NavSection[] = [
       {
         label: "Department",
         icon: Building2,
-        to: "/departments"
+        to: "/departments",
+        roles: ["HRD"]
       },
       {
         label: "Karyawan",
         icon: Users,
-        to: "/employees",
-        roles: ["HRD"]
+        to: "/employees"
       }
     ]
   },

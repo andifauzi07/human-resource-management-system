@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/empty-state";
+import { DataTable, type DataTableColumn } from "@/components/data-table";
 import { useDepartments } from "@/features/departments/hooks";
 import { DepartmentDialog } from "@/features/departments/components/department-dialog";
 import { DepartmentDeleteDialog } from "@/features/departments/components/department-delete-dialog";
@@ -30,6 +30,78 @@ function formatDate(value: string | Date | null) {
     month: "long",
     year: "numeric"
   });
+}
+
+interface DepartColumnsProps {
+  isHRD: boolean;
+  onEdit: (department: Department) => void;
+  onDelete: (department: Department) => void;
+}
+
+function buildColumns({
+  isHRD,
+  onEdit,
+  onDelete
+}: DepartColumnsProps): DataTableColumn<Department>[] {
+  const base: DataTableColumn<Department>[] = [
+    {
+      key: "name",
+      header: "Nama",
+      type: "text",
+      sortable: true,
+      getValue: (d) => d.name,
+      className: "px-4 font-medium"
+    },
+    {
+      key: "manager",
+      header: "Manager",
+      type: "text",
+      sortable: true,
+      getValue: (d) => d.manager_name ?? "",
+      render: (d) => d.manager_name ?? "—"
+    },
+    {
+      key: "created_at",
+      header: "Dibuat",
+      type: "date",
+      sortable: true,
+      getValue: (d) => new Date(d.created_at),
+      render: (d) => formatDate(d.created_at)
+    }
+  ];
+
+  if (isHRD) {
+    base.push({
+      key: "actions",
+      header: "",
+      type: "action",
+      getValue: () => null,
+      className: "w-12 text-right",
+      headerClassName: "w-12",
+      render: (department) => (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="Aksi">
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => onEdit(department)}>
+              <Pencil /> Ubah
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => onDelete(department)}
+            >
+              <Trash2 /> Hapus
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    });
+  }
+
+  return base;
 }
 
 function DepartmentsPage() {
@@ -68,7 +140,7 @@ function DepartmentsPage() {
       />
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-4">
           {isLoading ? (
             <div className="grid gap-3 p-4">
               {Array.from({ length: 3 }).map((_, i) => (
@@ -91,51 +163,19 @@ function DepartmentsPage() {
               description="Tambahkan department pertama untuk mulai."
             />
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="px-4">Nama</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Dibuat</TableHead>
-                  {isHRD && <TableHead className="w-12" />}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(data ?? []).map((department) => (
-                  <TableRow key={department.id}>
-                    <TableCell className="px-4 font-medium">
-                      {department.name}
-                    </TableCell>
-                    <TableCell>
-                      {department.manager_name ?? "—"}
-                    </TableCell>
-                    <TableCell>{formatDate(department.created_at)}</TableCell>
-                    {isHRD && (
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" aria-label="Aksi">
-                              <MoreHorizontal />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => openEdit(department)}>
-                              <Pencil /> Ubah
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              variant="destructive"
-                              onSelect={() => setDeleting(department)}
-                            >
-                              <Trash2 /> Hapus
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <DataTable
+              columns={buildColumns({
+                isHRD,
+                onEdit: openEdit,
+                onDelete: setDeleting
+              })}
+              rows={data ?? []}
+              getRowKey={(d) => d.id}
+              searchEnabled
+              searchPlaceholder="Cari nama atau manager…"
+              defaultSortKey="created_at"
+              emptyState="Tidak ada department yang cocok."
+            />
           )}
         </CardContent>
       </Card>

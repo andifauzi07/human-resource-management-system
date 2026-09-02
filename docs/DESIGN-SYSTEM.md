@@ -135,6 +135,7 @@ meniru pola ini manual dengan styling berbeda** bila kasusnya sesuai.
 | StatusBadge | `components/status-badge.tsx` | Badge kondisi (cuti/absensi/kehadiran) dengan peta `status → varian` otomatis |
 | EmptyState | `components/empty-state.tsx` | Placeholder daftar/modul tanpa data: `icon?`, `title`, `description?`, `action?` |
 | PageHeader | `components/page-header.tsx` | Judul halaman + deskripsi + `actions?` (kanan) — dipakai semua halaman |
+| DataTable | `components/data-table/` | Tabel data reusable (`DataTable` + `useDataListing`): search, filter kategorikal, sort teks/tanggal, pagination 10/25/50. Model perilaku kolom: `type` `text` (sort+search) / `date` (sort) / `category` (filter) / `action` (slot, non-sort/filter). Default urutan desc by `created_at`. Semua tabel data wajib memakai ini |
 
 ---
 

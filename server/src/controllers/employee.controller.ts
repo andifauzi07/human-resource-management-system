@@ -38,7 +38,39 @@ const updateEmployeeSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD")
     .optional(),
-  status: z.enum(["ACTIVE", "INACTIVE"]).optional()
+  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  nik: z
+    .string()
+    .regex(/^\d{16}$/, "NIK harus 16 digit angka")
+    .optional(),
+  address: z.string().max(255, "Alamat maksimal 255 karakter").optional(),
+  bank_account_number: z
+    .string()
+    .max(50, "Nomor rekening maksimal 50 karakter")
+    .optional(),
+  bank_account_name: z
+    .string()
+    .max(150, "Nama rekening maksimal 150 karakter")
+    .optional(),
+  phone: z
+    .string()
+    .regex(/^\+?[0-9]{8,15}$/, "Nomor telepon tidak valid")
+    .optional()
+});
+
+// Self-service: hanya field pribadi yang boleh diubah; field inti TIDAK diterima.
+const updateMineSchema = z.object({
+  nik: z.string().regex(/^\d{16}$/, "NIK harus 16 digit angka"),
+  address: z.string().max(255, "Alamat maksimal 255 karakter").optional(),
+  bank_account_number: z
+    .string()
+    .max(50, "Nomor rekening maksimal 50 karakter")
+    .optional(),
+  bank_account_name: z
+    .string()
+    .max(150, "Nama rekening maksimal 150 karakter")
+    .optional(),
+  phone: z.string().regex(/^\+?[0-9]{8,15}$/, "Nomor telepon tidak valid")
 });
 
 export const create = AsyncHandler(async (req: Request, res: Response) => {
@@ -70,6 +102,16 @@ export const getById = AsyncHandler(async (req: Request, res: Response) => {
   const id = String(req.params.id);
   const employee = await employeeService.getEmployeeById(id);
   return ApiResponse.ok(res, "Detail employee", employee);
+});
+
+export const updateMine = AsyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?.sub;
+  if (!userId) {
+    throw ApiError.unauthorized("Tidak terautentikasi");
+  }
+  const body = updateMineSchema.parse(req.body);
+  const employee = await employeeService.updateOwnProfile(userId, body);
+  return ApiResponse.ok(res, "Profil berhasil diperbarui", employee);
 });
 
 export const update = AsyncHandler(async (req: Request, res: Response) => {

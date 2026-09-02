@@ -32,6 +32,11 @@ function mockEmp(overrides?: Record<string, unknown>) {
     position: "Engineer",
     base_salary: "5000000",
     join_date: "2026-09-01",
+    nik: null,
+    address: null,
+    bank_account_number: null,
+    bank_account_name: null,
+    phone: null,
     status: "ACTIVE" as const,
     created_at: new Date(),
     updated_at: new Date(),
@@ -153,6 +158,50 @@ describe("Employee Service", () => {
         })
       ).rejects.toThrow("Email sudah terdaftar");
     });
+
+    it("should default join_date to today when not provided", async () => {
+      const employee = mockEmp();
+      const user = mockUser();
+
+      const emailCheck = mockSelectChain([]);
+      mockDb.select.mockReturnValueOnce(emailCheck as never);
+
+      const valuesCapture = vi.fn();
+      const insertChain = {
+        values: vi
+          .fn()
+          .mockImplementation((values: Record<string, unknown>) => {
+            valuesCapture(values);
+            return {
+              returning: vi.fn().mockResolvedValue([employee])
+            };
+          })
+      };
+      mockDb.insert.mockReturnValueOnce(insertChain as never);
+
+      const userInsertChain = {
+        values: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([user])
+        })
+      };
+      mockDb.insert.mockReturnValueOnce(userInsertChain as never);
+
+      const today = new Date().toISOString().slice(0, 10);
+
+      await employeeService.createEmployee({
+        full_name: "John Doe",
+        department_id: "dept-123",
+        position: "Engineer",
+        base_salary: 5000000
+      });
+
+      expect(valuesCapture).toHaveBeenCalled();
+      const captured = valuesCapture.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
+      expect(captured.join_date).toBe(today);
+    });
   });
 
   describe("getEmployeeById", () => {
@@ -249,6 +298,90 @@ describe("Employee Service", () => {
       await expect(
         employeeService.updateEmployee("nonexistent", { full_name: "Test" })
       ).rejects.toThrow("Employee tidak ditemukan");
+    });
+
+    it("should throw 409 conflict when nik is duplicated", async () => {
+      const employee = mockEmp();
+      const selectChain = mockSelectChain(employee);
+      mockDb.select.mockReturnValue(selectChain as never);
+
+      const uniqueError = Object.assign(new Error("duplicate key"), {
+        code: "23505"
+      });
+      const updateChain = {
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockRejectedValue(uniqueError)
+          })
+        })
+      };
+      mockDb.update.mockReturnValue(updateChain as never);
+
+      await expect(
+        employeeService.updateEmployee("emp-123", { nik: "1234567890123456" })
+      ).rejects.toThrow("NIK sudah terdaftar");
+    });
+  });
+
+  describe("updateOwnProfile", () => {
+    it("should update own personal fields via employee_id resolution", async () => {
+      const employee = mockEmp({ phone: "081234567890" });
+
+      // Resolve user -> employee_id (inner join chain)
+      const deptChain = mockInnerJoinChain({ employee_id: "emp-123" });
+      mockDb.select.mockReturnValueOnce(deptChain as never);
+
+      const updateChain = {
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockResolvedValue([employee])
+          })
+        })
+      };
+      mockDb.update.mockReturnValueOnce(updateChain as never);
+
+      const result = await employeeService.updateOwnProfile("user-123", {
+        nik: "1234567890123456",
+        phone: "081234567890",
+        address: "Jl. Merdeka No. 1"
+      });
+      expect(result).toEqual(employee);
+    });
+
+    it("should throw 404 when user has no employee profile", async () => {
+      const deptChain = mockInnerJoinChain([]);
+      mockDb.select.mockReturnValueOnce(deptChain as never);
+
+      await expect(
+        employeeService.updateOwnProfile("invalid-user", {
+          nik: "1234567890123456",
+          phone: "081234567890"
+        })
+      ).rejects.toThrow("Profil karyawan tidak ditemukan");
+    });
+
+    it("should throw 409 conflict when nik is duplicated", async () => {
+      const deptChain = mockInnerJoinChain({ employee_id: "emp-123" });
+      mockDb.select.mockReturnValueOnce(deptChain as never);
+
+      const uniqueError = Object.assign(new Error("duplicate key"), {
+        code: "23505"
+      });
+      const updateChain = {
+        set: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            returning: vi.fn().mockRejectedValue(uniqueError)
+          })
+        })
+      };
+      mockDb.update.mockReturnValueOnce(updateChain as never);
+
+      await expect(
+        employeeService.updateOwnProfile("user-123", {
+          nik: "1234567890123456",
+          phone: "081234567890"
+        })
+      ).rejects.toThrow("NIK sudah terdaftar");
     });
   });
 

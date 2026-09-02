@@ -23,6 +23,11 @@ export const employeesTable = pgTable("employees", {
   position: varchar({ length: 100 }).notNull(),
   base_salary: decimal("base_salary", { precision: 12, scale: 2 }).notNull(),
   join_date: date("join_date").notNull(),
+  nik: varchar({ length: 20 }).unique(),
+  address: varchar({ length: 255 }),
+  bank_account_number: varchar({ length: 50 }),
+  bank_account_name: varchar({ length: 150 }),
+  phone: varchar({ length: 20 }),
   status: employeeStatusEnum().notNull().default("ACTIVE"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull()

@@ -75,7 +75,7 @@ export function Topbar() {
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem disabled>
+            <DropdownMenuItem onSelect={() => navigate({ to: "/profile" })}>
               <UserRound />
               Profil
             </DropdownMenuItem>

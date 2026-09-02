@@ -107,7 +107,7 @@ Didefinisikan di `server/src/drizzle/schemas/*.schema.ts` (satu file per modul).
 > **Keputusan desain (2026-08-25):** kolom `employee_id` (FK → `employees.id`) **DITUNDA** ke modul Employee agar scope auth self-contained. Saat ini `users` tidak memiliki FK ke `employees`; relasi 1—1 ditambahkan saat tabel `employees` dibuat. PK seluruh tabel = `uuid` (bukan `integer` seperti stub awal yang sudah dibuang).
 
 Rencana relasi utama:
-- `employees`: `id`, `full_name`, `department_id` (FK), `position`, `base_salary`, `join_date`, `status` enum(`ACTIVE`,`INACTIVE`)
+- `employees`: `id`, `full_name`, `department_id` (FK), `position`, `base_salary`, `join_date`, `status` enum(`ACTIVE`,`INACTIVE`), `nik` (varchar 20, unique), `address` (varchar 255), `bank_account_number` (varchar 50), `bank_account_name` (varchar 150), `phone` (varchar 20). Kolom pribadi (`nik`..`phone`) nullable; NIK/phone wajib mengisi hanya di level form.
 - `departments`: `id`, `name`, `manager_id` (FK → employees.id)
 - `leave_requests`: `id`, `employee_id` FK, `type` enum(`ANNUAL`,`SICK`,`UNPAID`), `start_date`, `end_date`, `reason`, `status` enum(`PENDING`,`APPROVED`,`REJECTED`), `approved_by` FK
 - `attendance`: `id`, `employee_id` FK, `check_in_time`, `check_out_time`, `check_in_lat`/`check_in_lng`, `distance_from_office_m`, `is_valid_location` (bool), `status` enum(`ON_TIME`,`LATE`,`ABSENT`)
@@ -130,6 +130,7 @@ Relasi: `employees 1—N attendance/leave_requests/overtime_records/payroll`, `d
 | Lihat semua karyawan (detail penuh) | ❌ | ✅ |
 | Lihat detail karyawan (`GET /employees/:id`) | ❌ | ✅ |
 | Tambah/edit/hapus karyawan | ❌ | ✅ |
+| Edit profil sendiri (data pribadi via `PATCH /employees/mine`) | ✅ (field pribadi saja) | ✅ |
 | Ajukan cuti | ✅ (milik sendiri) | ✅ |
 | Approve/reject cuti | ❌ | ✅ |
 | Check-in/out presensi | ✅ | ✅ |
@@ -174,6 +175,8 @@ GET    /api/v1/auth/me          (authGuard)
 POST   /api/v1/auth/logout      (authGuard)
 POST   /api/employees
 GET    /api/employees
+GET    /api/employees/mine     (authGuard — profil sendiri)
+PATCH  /api/employees/mine     (authGuard — update data pribadi sendiri)
 GET    /api/employees/:id
 PATCH  /api/employees/:id
 DELETE /api/employees/:id
@@ -200,7 +203,7 @@ Saat ini sudah ada `GET /api/v1/health` dan seluruh endpoint `POST /api/v1/auth/
 
 1. **Setup DB**: Drizzle schema lengkap + migrasi + seeder (`drizzle/schemas/`, `db:generate`, `db:migrate`).
 2. **Auth + RBAC**: **terimplementasi** (lihat `openspec/changes/add-auth`). Keputusan: token access di memori FE (zustand) + refresh di httpOnly cookie; bcryptjs; PK `uuid`; FK `users.employee_id` ditunda ke modul Employee. Auth menetapkan pola layering `routes → controller → service → middleware` untuk modul berikutnya.
-3. **Modul Employee**: CRUD + halaman frontend — **terimplementasi** (`features/employees/`, `routes/_app/employees/`). STAFF melihat daftar read-only (nama + jabatan) se-department via proyeksi backend per-role; `GET /employees/:id` khusus HRD; profil sendiri lewat `/employees/mine`. (FK `employee_id` ke `users` sudah dibuat sejak modul employee.)
+3. **Modul Employee**: CRUD + halaman frontend — **terimplementasi** (`features/employees/`, `routes/_app/employees/`). STAFF melihat daftar read-only (nama + jabatan) se-department via proyeksi backend per-role; `GET /employees/:id` khusus HRD; profil sendiri lewat `/employees/mine` + self-service `PATCH /employees/mine` (data pribadi: NIK, telepon, alamat, rekening; field inti read-only untuk STAFF); halaman detail/edit HRD di `/employees/$id`. Foto karyawan ditunda (placeholder avatar + tombol upload disabled). (FK `employee_id` ke `users` sudah dibuat sejak modul employee.)
 4. **Modul Attendance**: geolocation check-in/out.
 5. **Modul Leave**: request + approval.
 6. **Modul Overtime + Payroll** 🚧: Vercel Cron API route.

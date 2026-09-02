@@ -21,7 +21,17 @@ export interface UpdateEmployeeInput {
   base_salary?: number;
   join_date?: string;
   status?: "ACTIVE" | "INACTIVE";
+  nik?: string;
+  address?: string;
+  bank_account_number?: string;
+  bank_account_name?: string;
+  phone?: string;
 }
+
+export type UpdateMyProfileInput = Pick<
+  UpdateEmployeeInput,
+  "nik" | "address" | "bank_account_number" | "bank_account_name" | "phone"
+>;
 
 export const employeesApi = {
   async list(): Promise<EmployeeListItem[]> {
@@ -32,6 +42,15 @@ export const employeesApi = {
   },
   async mine(): Promise<Employee> {
     return apiFetch<Employee>("/employees/mine");
+  },
+  async getById(id: string): Promise<Employee> {
+    return apiFetch<Employee>(`/employees/${id}`);
+  },
+  async updateMine(input: UpdateMyProfileInput): Promise<Employee> {
+    return apiFetch<Employee>("/employees/mine", {
+      method: "PATCH",
+      body: input
+    });
   },
   async create(input: CreateEmployeeInput): Promise<CreateEmployeeResult> {
     return apiFetch<CreateEmployeeResult>("/employees", {

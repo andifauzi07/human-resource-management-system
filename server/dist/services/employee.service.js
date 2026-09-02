@@ -13,6 +13,11 @@ const withDepartmentProjection = {
     position: employeesTable.position,
     base_salary: employeesTable.base_salary,
     join_date: employeesTable.join_date,
+    nik: employeesTable.nik,
+    address: employeesTable.address,
+    bank_account_number: employeesTable.bank_account_number,
+    bank_account_name: employeesTable.bank_account_name,
+    phone: employeesTable.phone,
     status: employeesTable.status,
     created_at: employeesTable.created_at,
     updated_at: employeesTable.updated_at,
@@ -35,6 +40,24 @@ async function getUserDepartmentId(userId) {
     }
     return row.department_id;
 }
+async function getEmployeeIdByUserId(userId) {
+    const [row] = await db
+        .select({ employee_id: employeesTable.id })
+        .from(usersTable)
+        .innerJoin(employeesTable, eq(employeesTable.id, usersTable.employee_id))
+        .where(eq(usersTable.id, userId))
+        .limit(1);
+    if (!row) {
+        throw ApiError.notFound("Profil karyawan tidak ditemukan");
+    }
+    return row.employee_id;
+}
+function isUniqueViolation(error) {
+    return (typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "23505");
+}
 export const employeeService = {
     async createEmployee(input) {
         const email = generateEmail(input.full_name);
@@ -50,6 +73,7 @@ export const employeeService = {
             throw ApiError.conflict("Email sudah terdaftar");
         }
         // Create employee
+        const join_date = input.join_date ?? new Date().toISOString().slice(0, 10);
         const [employee] = await db
             .insert(employeesTable)
             .values({
@@ -57,7 +81,7 @@ export const employeeService = {
             full_name: input.full_name,
             position: input.position,
             base_salary: String(input.base_salary),
-            join_date: input.join_date
+            join_date
         })
             .returning();
         // Create user account
@@ -129,16 +153,50 @@ export const employeeService = {
         if (!existing) {
             throw ApiError.notFound("Employee tidak ditemukan");
         }
-        const [updated] = await db
-            .update(employeesTable)
-            .set({
-            ...input,
-            base_salary: input.base_salary ? String(input.base_salary) : undefined,
-            updated_at: new Date()
-        })
-            .where(eq(employeesTable.id, id))
-            .returning();
-        return updated;
+        try {
+            const [updated] = await db
+                .update(employeesTable)
+                .set({
+                ...input,
+                base_salary: input.base_salary
+                    ? String(input.base_salary)
+                    : undefined,
+                updated_at: new Date()
+            })
+                .where(eq(employeesTable.id, id))
+                .returning();
+            return updated;
+        }
+        catch (error) {
+            if (isUniqueViolation(error)) {
+                throw ApiError.conflict("NIK sudah terdaftar");
+            }
+            throw error;
+        }
+    },
+    async updateOwnProfile(userId, input) {
+        const employeeId = await getEmployeeIdByUserId(userId);
+        try {
+            const [updated] = await db
+                .update(employeesTable)
+                .set({
+                nik: input.nik,
+                address: input.address,
+                bank_account_number: input.bank_account_number,
+                bank_account_name: input.bank_account_name,
+                phone: input.phone,
+                updated_at: new Date()
+            })
+                .where(eq(employeesTable.id, employeeId))
+                .returning();
+            return updated;
+        }
+        catch (error) {
+            if (isUniqueViolation(error)) {
+                throw ApiError.conflict("NIK sudah terdaftar");
+            }
+            throw error;
+        }
     },
     async deactivateEmployee(id) {
         const [existing] = await db

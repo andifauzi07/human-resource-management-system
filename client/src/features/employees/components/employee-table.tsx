@@ -1,4 +1,5 @@
-import { KeyRound, MoreHorizontal, Pencil, UserX, Users } from "lucide-react";
+import { Eye, KeyRound, MoreHorizontal, Pencil, UserX, Users } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -59,6 +60,7 @@ export function EmployeeTable({
   onResetPassword
 }: EmployeeTableProps) {
   const { data, isLoading, isError, refetch } = useAllEmployees(true);
+  const navigate = useNavigate();
 
   const actionColumn: DataTableColumn<Employee> = {
     key: "actions",
@@ -75,6 +77,11 @@ export function EmployeeTable({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onSelect={() => navigate({ to: "/employees/$id", params: { id: employee.id } })}
+          >
+            <Eye /> Detail
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => onEdit(employee)}>
             <Pencil /> Ubah
           </DropdownMenuItem>

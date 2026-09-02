@@ -5,6 +5,7 @@ import {
   getMine,
   getById,
   update,
+  updateMine,
   remove,
   resetPassword
 } from "../controllers/employee.controller";
@@ -13,6 +14,7 @@ import { authGuard, rbacGuard } from "../middlewares/auth.middleware";
 const router = Router();
 
 router.get("/mine", authGuard, getMine);
+router.patch("/mine", authGuard, updateMine);
 router.get("/", authGuard, list);
 router.post("/", authGuard, rbacGuard(["HRD"]), create);
 router.get("/:id", authGuard, rbacGuard(["HRD"]), getById);

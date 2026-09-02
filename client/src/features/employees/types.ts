@@ -18,6 +18,11 @@ export interface Employee {
   position: string;
   base_salary: string;
   join_date: string;
+  nik: string | null;
+  address: string | null;
+  bank_account_number: string | null;
+  bank_account_name: string | null;
+  phone: string | null;
   status: EmployeeStatus;
   created_at: string;
   updated_at: string;

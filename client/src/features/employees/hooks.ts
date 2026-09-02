@@ -4,11 +4,16 @@ import {
   useQueryClient
 } from "@tanstack/react-query";
 import { employeesApi } from "./api";
-import type { CreateEmployeeInput, UpdateEmployeeInput } from "./api";
+import type {
+  CreateEmployeeInput,
+  UpdateEmployeeInput,
+  UpdateMyProfileInput
+} from "./api";
 
 export const employeesKeys = {
   all: ["employees"] as const,
-  mine: ["employee-mine"] as const
+  mine: ["employee-mine"] as const,
+  detail: (id: string) => ["employee-detail", id] as const
 };
 
 export function useEmployees() {
@@ -33,6 +38,24 @@ export function useMyProfile() {
   });
 }
 
+export function useEmployee(id: string) {
+  return useQuery({
+    queryKey: employeesKeys.detail(id),
+    queryFn: () => employeesApi.getById(id),
+    enabled: Boolean(id)
+  });
+}
+
+export function useUpdateMyProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateMyProfileInput) => employeesApi.updateMine(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: employeesKeys.mine });
+    }
+  });
+}
+
 export function useCreateEmployee() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -54,9 +77,10 @@ export function useUpdateEmployee() {
       id: string;
       input: UpdateEmployeeInput;
     }) => employeesApi.update(id, input),
-    onSuccess: () => {
+    onSuccess: (_data, { id }) => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.all });
       queryClient.invalidateQueries({ queryKey: employeesKeys.mine });
+      queryClient.invalidateQueries({ queryKey: employeesKeys.detail(id) });
     }
   });
 }

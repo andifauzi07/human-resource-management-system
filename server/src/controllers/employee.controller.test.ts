@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import * as employeeController from "./employee.controller";
 import employeeService from "../services/employee.service";
 import type { Employee } from "../drizzle/schemas/employee.schema";
+import type { EmployeeWithDepartment } from "../services/employee.service";
 
 vi.mock("../services/employee.service", () => ({
   default: {
@@ -30,6 +31,15 @@ function mockEmp(overrides?: Partial<Employee>): Employee {
     created_at: new Date(),
     updated_at: new Date(),
     ...overrides
+  };
+}
+
+function mockEmpWithDept(
+  overrides?: Partial<Employee>
+): EmployeeWithDepartment {
+  return {
+    ...mockEmp(overrides),
+    department: { id: "dept-1", name: "Engineering" }
   };
 }
 
@@ -100,20 +110,33 @@ describe("Employee Controller", () => {
 
   describe("list", () => {
     it("should return employees when HRD", async () => {
-      mockService.listEmployees.mockResolvedValue([mockEmp()]);
+      mockService.listEmployees.mockResolvedValue([mockEmpWithDept()]);
 
       const req = createMockReq({ user: { sub: "user-1", role: "HRD" } });
       const res = createMockRes();
 
       await runHandler(employeeController.list, req, res);
 
+      expect(mockService.listEmployees).toHaveBeenCalledWith("HRD", "user-1");
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should pass userId when STAFF lists employees", async () => {
+      mockService.listEmployees.mockResolvedValue([mockEmpWithDept()]);
+
+      const req = createMockReq({ user: { sub: "user-1", role: "STAFF" } });
+      const res = createMockRes();
+
+      await runHandler(employeeController.list, req, res);
+
+      expect(mockService.listEmployees).toHaveBeenCalledWith("STAFF", "user-1");
       expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 
   describe("getMine", () => {
     it("should return own profile", async () => {
-      mockService.getEmployeeByUserId.mockResolvedValue(mockEmp());
+      mockService.getEmployeeByUserId.mockResolvedValue(mockEmpWithDept());
 
       const req = createMockReq({ user: { sub: "user-1", role: "STAFF" } });
       const res = createMockRes();
@@ -126,7 +149,7 @@ describe("Employee Controller", () => {
 
   describe("getById", () => {
     it("should return employee when HRD", async () => {
-      mockService.getEmployeeById.mockResolvedValue(mockEmp());
+      mockService.getEmployeeById.mockResolvedValue(mockEmpWithDept());
 
       const req = createMockReq({
         params: { id: "emp-1" },

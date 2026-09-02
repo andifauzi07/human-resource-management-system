@@ -4,7 +4,10 @@ import {
   employeesTable,
   type Employee
 } from "../drizzle/schemas/employee.schema";
-import { departmentsTable } from "../drizzle/schemas/department.schema";
+import {
+  departmentsTable,
+  type Department
+} from "../drizzle/schemas/department.schema";
 import { usersTable } from "../drizzle/schemas/user.schema";
 import { ApiError } from "../utils/api-error";
 import { hashPassword } from "../utils/auth";
@@ -30,6 +33,38 @@ export interface UpdateEmployeeInput {
 export interface EmployeeCredentials {
   email: string;
   password: string;
+}
+
+export interface EmployeeWithDepartment extends Employee {
+  department: Pick<Department, "id" | "name"> | null;
+}
+
+const withDepartmentProjection = {
+  id: employeesTable.id,
+  department_id: employeesTable.department_id,
+  full_name: employeesTable.full_name,
+  position: employeesTable.position,
+  base_salary: employeesTable.base_salary,
+  join_date: employeesTable.join_date,
+  status: employeesTable.status,
+  created_at: employeesTable.created_at,
+  updated_at: employeesTable.updated_at,
+  department: { id: departmentsTable.id, name: departmentsTable.name }
+};
+
+async function getUserDepartmentId(userId: string): Promise<string> {
+  const [row] = await db
+    .select({ department_id: employeesTable.department_id })
+    .from(usersTable)
+    .innerJoin(employeesTable, eq(employeesTable.id, usersTable.employee_id))
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+
+  if (!row) {
+    throw ApiError.notFound("Profil karyawan tidak ditemukan");
+  }
+
+  return row.department_id;
 }
 
 export const employeeService = {
@@ -81,10 +116,14 @@ export const employeeService = {
     id: string,
     userRole: string,
     userId: string
-  ): Promise<Employee> {
+  ): Promise<EmployeeWithDepartment> {
     const [employee] = await db
-      .select()
+      .select(withDepartmentProjection)
       .from(employeesTable)
+      .leftJoin(
+        departmentsTable,
+        eq(departmentsTable.id, employeesTable.department_id)
+      )
       .where(eq(employeesTable.id, id))
       .limit(1);
 
@@ -92,15 +131,11 @@ export const employeeService = {
       throw ApiError.notFound("Employee tidak ditemukan");
     }
 
-    // STAFF can only view their own employee record
+    // STAFF can only view employees in the same department
     if (userRole === "STAFF") {
-      const [user] = await db
-        .select()
-        .from(usersTable)
-        .where(eq(usersTable.id, userId))
-        .limit(1);
+      const departmentId = await getUserDepartmentId(userId);
 
-      if (!user || user.employee_id !== employee.id) {
+      if (employee.department_id !== departmentId) {
         throw ApiError.forbidden("Tidak diizinkan melihat data karyawan lain");
       }
     }
@@ -108,7 +143,7 @@ export const employeeService = {
     return employee;
   },
 
-  async getEmployeeByUserId(userId: string): Promise<Employee> {
+  async getEmployeeByUserId(userId: string): Promise<EmployeeWithDepartment> {
     const [user] = await db
       .select()
       .from(usersTable)
@@ -120,8 +155,12 @@ export const employeeService = {
     }
 
     const [employee] = await db
-      .select()
+      .select(withDepartmentProjection)
       .from(employeesTable)
+      .leftJoin(
+        departmentsTable,
+        eq(departmentsTable.id, employeesTable.department_id)
+      )
       .where(eq(employeesTable.id, user.employee_id))
       .limit(1);
 
@@ -132,12 +171,36 @@ export const employeeService = {
     return employee;
   },
 
-  async listEmployees(userRole: string): Promise<Employee[]> {
-    if (userRole !== "HRD") {
-      throw ApiError.forbidden("Hanya HRD yang dapat melihat semua karyawan");
+  async listEmployees(
+    userRole: string,
+    userId: string
+  ): Promise<EmployeeWithDepartment[]> {
+    if (userRole !== "HRD" && userRole !== "STAFF") {
+      throw ApiError.forbidden(
+        "Role Anda tidak diizinkan melihat daftar karyawan"
+      );
     }
 
-    return db.select().from(employeesTable);
+    if (userRole === "HRD") {
+      return db
+        .select(withDepartmentProjection)
+        .from(employeesTable)
+        .leftJoin(
+          departmentsTable,
+          eq(departmentsTable.id, employeesTable.department_id)
+        );
+    }
+
+    const departmentId = await getUserDepartmentId(userId);
+
+    return db
+      .select(withDepartmentProjection)
+      .from(employeesTable)
+      .leftJoin(
+        departmentsTable,
+        eq(departmentsTable.id, employeesTable.department_id)
+      )
+      .where(eq(employeesTable.department_id, departmentId));
   },
 
   async updateEmployee(

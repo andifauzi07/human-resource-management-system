@@ -44,10 +44,11 @@ export const create = AsyncHandler(async (req, res) => {
 });
 export const list = AsyncHandler(async (req, res) => {
     const userRole = req.user?.role;
-    if (!userRole) {
+    const userId = req.user?.sub;
+    if (!userRole || !userId) {
         throw ApiError.unauthorized("Tidak terautentikasi");
     }
-    const employees = await employeeService.listEmployees(userRole);
+    const employees = await employeeService.listEmployees(userRole, userId);
     return ApiResponse.ok(res, "Daftar employee", employees);
 });
 export const getMine = AsyncHandler(async (req, res) => {

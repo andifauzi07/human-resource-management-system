@@ -27,6 +27,12 @@ function mockEmp(overrides) {
         ...overrides
     };
 }
+function mockEmpWithDept(overrides) {
+    return {
+        ...mockEmp(overrides),
+        department: { id: "dept-1", name: "Engineering" }
+    };
+}
 function createMockReq(overrides) {
     return {
         body: {},
@@ -77,16 +83,25 @@ describe("Employee Controller", () => {
     });
     describe("list", () => {
         it("should return employees when HRD", async () => {
-            mockService.listEmployees.mockResolvedValue([mockEmp()]);
+            mockService.listEmployees.mockResolvedValue([mockEmpWithDept()]);
             const req = createMockReq({ user: { sub: "user-1", role: "HRD" } });
             const res = createMockRes();
             await runHandler(employeeController.list, req, res);
+            expect(mockService.listEmployees).toHaveBeenCalledWith("HRD", "user-1");
+            expect(res.status).toHaveBeenCalledWith(200);
+        });
+        it("should pass userId when STAFF lists employees", async () => {
+            mockService.listEmployees.mockResolvedValue([mockEmpWithDept()]);
+            const req = createMockReq({ user: { sub: "user-1", role: "STAFF" } });
+            const res = createMockRes();
+            await runHandler(employeeController.list, req, res);
+            expect(mockService.listEmployees).toHaveBeenCalledWith("STAFF", "user-1");
             expect(res.status).toHaveBeenCalledWith(200);
         });
     });
     describe("getMine", () => {
         it("should return own profile", async () => {
-            mockService.getEmployeeByUserId.mockResolvedValue(mockEmp());
+            mockService.getEmployeeByUserId.mockResolvedValue(mockEmpWithDept());
             const req = createMockReq({ user: { sub: "user-1", role: "STAFF" } });
             const res = createMockRes();
             await runHandler(employeeController.getMine, req, res);
@@ -95,7 +110,7 @@ describe("Employee Controller", () => {
     });
     describe("getById", () => {
         it("should return employee when HRD", async () => {
-            mockService.getEmployeeById.mockResolvedValue(mockEmp());
+            mockService.getEmployeeById.mockResolvedValue(mockEmpWithDept());
             const req = createMockReq({
                 params: { id: "emp-1" },
                 user: { sub: "user-1", role: "HRD" }

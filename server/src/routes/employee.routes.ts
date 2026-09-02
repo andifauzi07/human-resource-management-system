@@ -13,7 +13,7 @@ import { authGuard, rbacGuard } from "../middlewares/auth.middleware";
 const router = Router();
 
 router.get("/mine", authGuard, getMine);
-router.get("/", authGuard, rbacGuard(["HRD"]), list);
+router.get("/", authGuard, list);
 router.post("/", authGuard, rbacGuard(["HRD"]), create);
 router.get("/:id", authGuard, getById);
 router.patch("/:id", authGuard, rbacGuard(["HRD"]), update);

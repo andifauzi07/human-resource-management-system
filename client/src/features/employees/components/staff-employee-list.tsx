@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Building2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,16 +10,39 @@ import { useEmployees, useMyProfile } from "../hooks";
 export function StaffEmployeeList() {
   const { data, isLoading, isError, refetch } = useEmployees();
 
-  return (
-    <Card>
-      <CardContent className="p-0">
-        {isLoading ? (
+  const { managers, staff } = useMemo(() => {
+    if (!data) return { managers: [], staff: [] };
+
+    const sorted = [...data].sort((a, b) => {
+      if (a.position === "MANAGER") return -1;
+      if (b.position === "MANAGER") return 1;
+      return a.join_date.localeCompare(b.join_date);
+    });
+
+    return {
+      managers: sorted.filter((e) => e.position === "MANAGER"),
+      staff: sorted.filter((e) => e.position !== "MANAGER")
+    };
+  }, [data]);
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-0">
           <div className="grid gap-3 p-4">
             {Array.from({ length: 3 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : isError ? (
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="p-0">
           <div className="grid place-items-center gap-3 px-6 py-16 text-center">
             <p className="text-sm text-muted-foreground">
               Gagal memuat daftar karyawan.
@@ -27,15 +51,47 @@ export function StaffEmployeeList() {
               Coba lagi
             </Button>
           </div>
-        ) : data && data.length === 0 ? (
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (data && data.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-0">
           <EmptyState
             icon={Users}
             title="Belum ada anggota"
             description="Belum ada karyawan di department Anda."
           />
-        ) : (
-          <ul className="divide-y">
-            {data?.map((employee) => (
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasManagers = managers.length > 0;
+  const hasStaff = staff.length > 0;
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <ul className="divide-y">
+          {hasManagers &&
+            managers.map((employee) => (
+              <li
+                key={employee.id}
+                className="flex items-center justify-between gap-4 px-4 py-3"
+              >
+                <span className="font-medium">{employee.full_name}</span>
+                <Badge variant="outline">MANAGER</Badge>
+              </li>
+            ))}
+
+          {hasManagers && hasStaff && <div className="border-t" />}
+
+          {hasStaff &&
+            staff.map((employee) => (
               <li
                 key={employee.id}
                 className="flex items-center justify-between gap-4 px-4 py-3"
@@ -46,8 +102,13 @@ export function StaffEmployeeList() {
                 </span>
               </li>
             ))}
-          </ul>
-        )}
+
+          {hasManagers && !hasStaff && (
+            <li className="px-4 py-6 text-center text-sm text-muted-foreground">
+              Belum ada staf di department ini
+            </li>
+          )}
+        </ul>
       </CardContent>
     </Card>
   );

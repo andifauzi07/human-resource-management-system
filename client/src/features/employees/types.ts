@@ -7,6 +7,7 @@ export interface EmployeeListItem {
   full_name: string;
   position: EmployeePosition;
   status: EmployeeStatus;
+  join_date: string;
 }
 
 export interface EmployeeDepartment {

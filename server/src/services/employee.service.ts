@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import db from "../configs/db";
 import {
   employeesTable,
@@ -78,7 +78,10 @@ export interface EmployeeWithDepartment extends Employee {
   department: Pick<Department, "id" | "name"> | null;
 }
 
-export type EmployeeListItem = Pick<Employee, "id" | "full_name" | "position">;
+export type EmployeeListItem = Pick<
+  Employee,
+  "id" | "full_name" | "position" | "join_date"
+>;
 
 const withDepartmentProjection = {
   id: employeesTable.id,
@@ -101,7 +104,8 @@ const withDepartmentProjection = {
 const employeeListItemProjection = {
   id: employeesTable.id,
   full_name: employeesTable.full_name,
-  position: employeesTable.position
+  position: employeesTable.position,
+  join_date: employeesTable.join_date
 };
 
 async function getUserDepartmentId(userId: string): Promise<string> {
@@ -344,7 +348,12 @@ export const employeeService = {
     return db
       .select(employeeListItemProjection)
       .from(employeesTable)
-      .where(eq(employeesTable.department_id, departmentId));
+      .where(
+        and(
+          eq(employeesTable.department_id, departmentId),
+          ne(employeesTable.status, "RESIGNED")
+        )
+      );
   },
 
   async updateEmployee(

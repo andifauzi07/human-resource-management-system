@@ -85,6 +85,27 @@ describe("Employee Controller", () => {
             await runHandler(employeeController.create, req, res);
             expect(res.status).toHaveBeenCalledWith(201);
         });
+        it("should create employee with a custom status from body", async () => {
+            const result = {
+                employee: mockEmp({ status: "ACTIVE" }),
+                credentials: { email: "jane@company.com", password: "pass123" }
+            };
+            mockService.createEmployee.mockResolvedValue(result);
+            const req = createMockReq({
+                body: {
+                    full_name: "Jane Doe",
+                    department_id: "550e8400-e29b-41d4-a716-446655440000",
+                    position: "STAFF",
+                    base_salary: 6000000,
+                    join_date: "2026-09-01",
+                    status: "ACTIVE"
+                }
+            });
+            const res = createMockRes();
+            await runHandler(employeeController.create, req, res);
+            expect(mockService.createEmployee).toHaveBeenCalledWith(expect.objectContaining({ status: "ACTIVE" }));
+            expect(res.status).toHaveBeenCalledWith(201);
+        });
     });
     describe("list", () => {
         it("should return employees when HRD", async () => {

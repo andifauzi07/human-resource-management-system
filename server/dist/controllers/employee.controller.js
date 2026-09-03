@@ -13,7 +13,8 @@ const createEmployeeSchema = z.object({
     base_salary: z.number().positive("Gaji pokok harus lebih dari 0"),
     join_date: z
         .string()
-        .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD")
+        .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
+    status: z.enum(["PROBATION", "ACTIVE", "ON_LEAVE", "RESIGNED"]).optional()
 });
 const updateEmployeeSchema = z.object({
     full_name: z

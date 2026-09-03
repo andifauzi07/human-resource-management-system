@@ -45,7 +45,8 @@ const withDepartmentProjection = {
 const employeeListItemProjection = {
     id: employeesTable.id,
     full_name: employeesTable.full_name,
-    position: employeesTable.position
+    position: employeesTable.position,
+    join_date: employeesTable.join_date
 };
 async function getUserDepartmentId(userId) {
     const [row] = await db
@@ -102,6 +103,7 @@ export const employeeService = {
         }
         const join_date = input.join_date ?? new Date().toISOString().slice(0, 10);
         const position = input.position ?? "STAFF";
+        const status = input.status ?? "PROBATION";
         const employee = await db.transaction(async (tx) => {
             let createdEmployee;
             if (position === "MANAGER") {
@@ -123,7 +125,8 @@ export const employeeService = {
                     full_name: input.full_name,
                     position: "MANAGER",
                     base_salary: String(input.base_salary),
-                    join_date
+                    join_date,
+                    status
                 })
                     .returning();
                 await tx
@@ -140,7 +143,8 @@ export const employeeService = {
                     full_name: input.full_name,
                     position: "STAFF",
                     base_salary: String(input.base_salary),
-                    join_date
+                    join_date,
+                    status
                 })
                     .returning();
                 createdEmployee = created;

@@ -9,7 +9,7 @@ Kelola data karyawan HRIS: CRUD employee, auto-generate email/password, soft del
 | Method | Endpoint | Authorization | Description |
 |--------|----------|---------------|-------------|
 | POST | `/api/v1/employees` | HRD | Buat karyawan + auto user account |
-| GET | `/api/v1/employees` | HRD (all, field penuh), STAFF (same dept, `{ id, full_name, position }` saja) | Lihat daftar karyawan |
+| GET | `/api/v1/employees` | HRD (all, field penuh), STAFF (same dept, `{ id, full_name, position, join_date }` saja) | Lihat daftar karyawan |
 | GET | `/api/v1/employees/mine` | All | Lihat profil sendiri (field penuh + department, termasuk field pribadi) |
 | PATCH | `/api/v1/employees/mine` | All | Update data pribadi sendiri (self-service; field inti ditolak) |
 | GET | `/api/v1/employees/:id` | HRD | Lihat detail karyawan |
@@ -22,7 +22,7 @@ Kelola data karyawan HRIS: CRUD employee, auto-generate email/password, soft del
 1. Email auto-generated dari `full_name` → `john.doe@company.com`
 2. Password auto-generated (12+ chars), plain text hanya di response create/reset
 3. User account dibuat otomatis dengan role STAFF saat create employee
-4. STAFF hanya dapat melihat daftar karyawan di department yang sama, dan hanya menerima field `id`, `full_name`, `position` (tanpa `base_salary`, `status`, `join_date`, maupun objek `department`)
+4. STAFF hanya dapat melihat daftar karyawan di department yang sama, dan hanya menerima field `id`, `full_name`, `position`, dan `join_date` (tanpa `base_salary`, `status`, maupun objek `department`). Daftar STAFF TIDAK dilengkapi search, filter, maupun pagination. Karyawan berstatus `RESIGNED` TIDAK ditampilkan dalam daftar STAFF.
 5. Field `position` SHALL diimplementasikan sebagai enum dengan nilai `STAFF` dan `MANAGER` di level database, bukan free-text varchar. Nilai default saat pembuatan karyawan adalah `STAFF`.
 6. Field `status` karyawan SHALL mengikuti salah satu dari nilai enum: `PROBATION`, `ACTIVE`, `ON_LEAVE`, atau `RESIGNED`. HRD DAPAT menentukan status awal karyawan saat pembuatan melalui field opsional `status` pada `POST /employees`; jika tidak disertakan, status default ke `PROBATION`. Sistem SHALL menolak transisi `ACTIVE` → `PROBATION` karena status probation hanya boleh terjadi satu kali seumur hidup karyawan.
 7. Saat soft delete (`DELETE /employees/:id`), status karyawan diubah menjadi `RESIGNED` dan `departments.manager_id` yang menunjuk ke karyawan tersebut di-set `null` di seluruh department. Sistem SHALL menolak deactivation untuk karyawan yang berstatus `MANAGER` (HRD harus mengganti manager department terlebih dahulu).

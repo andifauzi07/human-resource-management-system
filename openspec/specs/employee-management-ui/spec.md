@@ -2,7 +2,7 @@
 
 ## Capability Overview
 
-Antarmuka manajemen karyawan di sisi client: satu halaman `/employees` yang berpindah wujud berdasarkan role — STAFF melihat daftar read-only (nama + jabatan) anggota se-department, HRD melihat tabel lengkap dengan CRUD.
+Antarmuka manajemen karyawan di sisi client: satu halaman `/employees` yang berpindah wujud berdasarkan role — STAFF melihat daftar read-only dengan hierarki visual (manager di atas dengan badge, staff diurutkan join_date) anggota se-department, HRD melihat tabel lengkap dengan CRUD.
 
 ## Requirements
 
@@ -41,20 +41,36 @@ Tabel karyawan untuk HRD MUST menggunakan pattern `DataTable` dengan kolom: nama
 - **WHEN** jumlah karyawan melebihi ukuran halaman
 - **THEN** hasil dibagi ke beberapa halaman dengan pemilih ukuran 10/25/50
 
-### Requirement: Daftar STAFF read-only tanpa detail
-Sistem SHALL menampilkan kepada STAFF hanya nama dan jabatan anggota se-department (data dari `GET /api/v1/employees`), tanpa tombol create/edit/deactivate/reset-password, dan tanpa jalur menuju detail karyawan. Daftar STAFF TIDAK dilengkapi search, filter, sort, maupun pagination — karena satu department hanya berisi beberapa pegawai, daftar ditampilkan apa adanya dalam bentuk list (`<ul>`).
+### Requirement: Daftar STAFF read-only dengan hierarki visual
+Client SHALL menampilkan daftar anggota se-department untuk role STAFF dengan hierarki visual: posisi MANAGER ditampilkan di paling atas daftar dengan badge `variant="outline"`, dipisahkan dari daftar STAFF oleh divider garis (`border-t`). Daftar STAFF diurutkan berdasarkan `join_date` ASC (terlama ke terbaru). Jika tidak ada manager, daftar STAFF ditampilkan tanpa divider. Jika salah satu grup kosong, tampilkan empty state per-grab yang sesuai.
 
-#### Scenario: STAFF melihat daftar anggota
-- **WHEN** halaman employee STAFF memuat daftar dari `GET /api/v1/employees`
-- **THEN** setiap baris menampilkan `full_name` dan `position`, dan baris tidak dapat diklik menuju detail
+#### Scenario: STAFF melihat daftar dengan manager di atas
+- **WHEN** halaman employee STAFF memuat daftar dan terdapat karyawan dengan position `MANAGER`
+- **THEN** karyawan MANAGER ditampilkan paling atas, diikuti divider garis, diikuti daftar STAFF
+
+#### Scenario: MANAGER ditampilkan dengan badge
+- **WHEN** karyawan dengan position `MANAGER` ditampilkan dalam daftar STAFF
+- **THEN** position ditampilkan sebagai `<Badge variant="outline">MANAGER</Badge>`
+
+#### Scenario: STAFF diurutkan berdasarkan join_date
+- **WHEN** daftar STAFF dirender
+- **THEN** karyawan STAFF diurutkan berdasarkan `join_date` secara ASC (terlama ke terbaru)
+
+#### Scenario: Tidak ada manager
+- **WHEN** department tidak memiliki karyawan dengan position `MANAGER`
+- **THEN** daftar STAFF ditampilkan tanpa divider, langsung dari karyawan pertama
+
+#### Scenario: Tidak ada staf
+- **WHEN** department memiliki manager tetapi tidak ada karyawan dengan position `STAFF`
+- **THEN** daftar menampilkan manager, divider, dan empty state "Belum ada staf di department ini"
+
+#### Scenario: Tidak ada data sama sekali
+- **WHEN** department tidak memiliki karyawan sama sekali
+- **THEN** tampilkan empty state global "Belum ada anggota" tanpa divider maupun section
 
 #### Scenario: STAFF tidak memiliki aksi CRUD
 - **WHEN** user dengan role STAFF berada di halaman employee
 - **THEN** tidak ada tombol tambah karyawan, edit, nonaktifkan, ataupun reset password yang dirender
-
-#### Scenario: Daftar STAFF tanpa fitur pengolahan
-- **WHEN** user dengan role STAFF berada di halaman employee
-- **THEN** daftar anggota ditampilkan polos sebagai list, tanpa input search, tanpa filter, tanpa sort, dan tanpa pagination
 
 ### Requirement: Badge department pada tampilan STAFF
 Client MUST menampilkan nama department pada header halaman employee untuk STAFF, diambil dari `GET /employees/mine` (objek `department.name`), karena response list STAFF tidak menyertakan department.

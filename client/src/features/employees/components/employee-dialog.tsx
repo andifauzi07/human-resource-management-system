@@ -19,12 +19,6 @@ interface FormValues {
   position: "STAFF" | "MANAGER";
   base_salary: string;
   join_date: string;
-  status: "PROBATION" | "ACTIVE" | "ON_LEAVE" | "RESIGNED";
-  nik: string;
-  address: string;
-  bank_account_number: string;
-  bank_account_name: string;
-  phone: string;
 }
 
 type FieldErrors = Partial<Record<keyof FormValues, string>>;
@@ -34,13 +28,7 @@ const editableFields: Array<keyof FormValues> = [
   "department_id",
   "position",
   "base_salary",
-  "join_date",
-  "status",
-  "nik",
-  "address",
-  "bank_account_number",
-  "bank_account_name",
-  "phone"
+  "join_date"
 ];
 
 function collectErrors(error: {
@@ -75,13 +63,7 @@ export function EmployeeDialog({
     department_id: employee?.department_id ?? "",
     position: employee?.position ?? "STAFF",
     base_salary: employee ? String(employee.base_salary) : "",
-    join_date: employee?.join_date ?? "",
-    status: employee?.status ?? "PROBATION",
-    nik: employee?.nik ?? "",
-    address: employee?.address ?? "",
-    bank_account_number: employee?.bank_account_number ?? "",
-    bank_account_name: employee?.bank_account_name ?? "",
-    phone: employee?.phone ?? ""
+    join_date: employee?.join_date ?? ""
   }));
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -114,17 +96,7 @@ export function EmployeeDialog({
             department_id: parsed.data.department_id,
             position: parsed.data.position,
             base_salary: parsed.data.base_salary,
-            join_date: parsed.data.join_date,
-            ...(parsed.data.status ? { status: parsed.data.status } : {}),
-            ...(parsed.data.nik ? { nik: parsed.data.nik } : {}),
-            ...(parsed.data.address ? { address: parsed.data.address } : {}),
-            ...(parsed.data.bank_account_number
-              ? { bank_account_number: parsed.data.bank_account_number }
-              : {}),
-            ...(parsed.data.bank_account_name
-              ? { bank_account_name: parsed.data.bank_account_name }
-              : {}),
-            ...(parsed.data.phone ? { phone: parsed.data.phone } : {})
+            join_date: parsed.data.join_date
           }
         });
         toast.success("Employee berhasil diperbarui");
@@ -318,109 +290,6 @@ export function EmployeeDialog({
               )}
             </div>
           </div>
-
-          {isEdit && (
-            <>
-              <div className="bg-muted/50 flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium">
-                Data Pribadi
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="emp-nik">NIK</Label>
-                  <Input
-                    id="emp-nik"
-                    name="nik"
-                    inputMode="numeric"
-                    maxLength={16}
-                    placeholder="16 digit NIK"
-                    value={values?.nik}
-                    onChange={(e) => setField("nik", e.target.value)}
-                    aria-invalid={Boolean(fieldErrors.nik)}
-                  />
-                  {fieldErrors.nik && (
-                    <p className="text-destructive text-xs">
-                      {fieldErrors.nik}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="emp-phone">Nomor Telepon</Label>
-                  <Input
-                    id="emp-phone"
-                    name="phone"
-                    type="tel"
-                    inputMode="tel"
-                    placeholder="+62 812-3456-7890"
-                    value={values?.phone}
-                    onChange={(e) => setField("phone", e.target.value)}
-                    aria-invalid={Boolean(fieldErrors.phone)}
-                  />
-                  {fieldErrors.phone && (
-                    <p className="text-destructive text-xs">
-                      {fieldErrors.phone}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="emp-address">Alamat</Label>
-                <Input
-                  id="emp-address"
-                  name="address"
-                  placeholder="Alamat tempat tinggal"
-                  value={values?.address}
-                  onChange={(e) => setField("address", e.target.value)}
-                  aria-invalid={Boolean(fieldErrors.address)}
-                />
-                {fieldErrors.address && (
-                  <p className="text-destructive text-xs">
-                    {fieldErrors.address}
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="emp-bank-number">Nomor Rekening</Label>
-                  <Input
-                    id="emp-bank-number"
-                    name="bank_account_number"
-                    placeholder="Nomor rekening"
-                    value={values?.bank_account_number}
-                    onChange={(e) =>
-                      setField("bank_account_number", e.target.value)
-                    }
-                    aria-invalid={Boolean(fieldErrors.bank_account_number)}
-                  />
-                  {fieldErrors.bank_account_number && (
-                    <p className="text-destructive text-xs">
-                      {fieldErrors.bank_account_number}
-                    </p>
-                  )}
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="emp-bank-name">Nama Rekening</Label>
-                  <Input
-                    id="emp-bank-name"
-                    name="bank_account_name"
-                    placeholder="Nama pemilik rekening"
-                    value={values?.bank_account_name}
-                    onChange={(e) => setField("bank_account_name", e.target.value)}
-                    aria-invalid={Boolean(fieldErrors.bank_account_name)}
-                  />
-                  {fieldErrors.bank_account_name && (
-                    <p className="text-destructive text-xs">
-                      {fieldErrors.bank_account_name}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
 
           <DialogFooter>
             <Button

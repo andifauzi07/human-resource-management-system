@@ -1,9 +1,11 @@
-export type EmployeeStatus = "ACTIVE" | "INACTIVE";
+export type EmployeeStatus = "PROBATION" | "ACTIVE" | "ON_LEAVE" | "RESIGNED";
+
+export type EmployeePosition = "STAFF" | "MANAGER";
 
 export interface EmployeeListItem {
   id: string;
   full_name: string;
-  position: string;
+  position: EmployeePosition;
 }
 
 export interface EmployeeDepartment {
@@ -15,7 +17,7 @@ export interface Employee {
   id: string;
   department_id: string;
   full_name: string;
-  position: string;
+  position: EmployeePosition;
   base_salary: string;
   join_date: string;
   nik: string | null;

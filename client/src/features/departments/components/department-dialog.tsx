@@ -39,6 +39,10 @@ export function DepartmentDialog({
   const updateMutation = useUpdateDepartment();
   const submitting = createMutation.isPending || updateMutation.isPending;
 
+  const filteredEmployees = isEdit && department
+    ? (employees ?? []).filter((e) => e.department_id === department.id)
+    : (employees ?? []);
+
   function setField(field: keyof DepartmentFormValues, value: string | null) {
     setValues((prev) => ({ ...prev, [field]: value }));
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -150,7 +154,7 @@ export function DepartmentDialog({
                 ) : (
                   <>
                     <SelectItem value={NO_MANAGER}>Tanpa manager</SelectItem>
-                    {(employees ?? []).map((employee) => (
+                    {(filteredEmployees).map((employee) => (
                       <SelectItem key={employee.id} value={employee.id}>
                         {employee.full_name}
                       </SelectItem>

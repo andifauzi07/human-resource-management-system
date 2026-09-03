@@ -19,6 +19,9 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
   failed: "destructive",
   absent: "destructive",
   inactive: "secondary",
+  probation: "warning",
+  on_leave: "info",
+  resigned: "destructive",
 }
 
 interface StatusBadgeProps extends React.ComponentProps<"span"> {

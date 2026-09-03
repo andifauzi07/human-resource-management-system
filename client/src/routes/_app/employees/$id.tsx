@@ -1,10 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { Fragment, useState, useCallback, type FormEvent } from "react";
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Camera, IdCard, Landmark, MapPin, Phone } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,10 +24,10 @@ export const Route = createFileRoute("/_app/employees/$id")({
 type FormValues = {
   full_name: string;
   department_id: string;
-  position: string;
+  position: "STAFF" | "MANAGER";
   base_salary: string;
   join_date: string;
-  status: "ACTIVE" | "INACTIVE";
+  status: "PROBATION" | "ACTIVE" | "ON_LEAVE" | "RESIGNED";
   nik: string;
   address: string;
   bank_account_number: string;
@@ -68,17 +69,15 @@ function EmployeeDetailForm({ employee }: { employee: Employee }) {
   );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [confirmDemote, setConfirmDemote] = useState(false);
 
   function setField(field: keyof FormValues, value: string) {
     setValues((prev) => ({ ...prev, [field]: value }));
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setFormError(null);
-
-    const parsed = employeeDetailSchema.safeParse(values);
+  const doSubmit = useCallback(async (vals: FormValues) => {
+    const parsed = employeeDetailSchema.safeParse(vals);
     if (!parsed.success) {
       const errors: FieldErrors = {};
       for (const issue of parsed.error.issues) {
@@ -128,9 +127,22 @@ function EmployeeDetailForm({ employee }: { employee: Employee }) {
           : "Terjadi kesalahan, coba lagi."
       );
     }
+  }, [employee.id, updateMutation]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+
+    if (employee.position === "MANAGER" && values.position === "STAFF") {
+      setConfirmDemote(true);
+      return;
+    }
+
+    await doSubmit(values);
   }
 
   return (
+    <Fragment>
     <div className="grid gap-6">
       <PageHeader
         title={employee.full_name}
@@ -222,12 +234,18 @@ function EmployeeDetailForm({ employee }: { employee: Employee }) {
 
               <div className="grid gap-2">
                 <Label htmlFor="ed-position">Jabatan</Label>
-                <Input
-                  id="ed-position"
+                <Select
                   value={values.position}
-                  onChange={(e) => setField("position", e.target.value)}
-                  aria-invalid={Boolean(fieldErrors.position)}
-                />
+                  onValueChange={(v) => setField("position", v)}
+                >
+                  <SelectTrigger id="ed-position" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STAFF">STAFF</SelectItem>
+                    <SelectItem value="MANAGER">MANAGER</SelectItem>
+                  </SelectContent>
+                </Select>
                 {fieldErrors.position && (
                   <p className="text-destructive text-xs">{fieldErrors.position}</p>
                 )}
@@ -277,8 +295,10 @@ function EmployeeDetailForm({ employee }: { employee: Employee }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="PROBATION">Probation</SelectItem>
                     <SelectItem value="ACTIVE">Aktif</SelectItem>
-                    <SelectItem value="INACTIVE">Nonaktif</SelectItem>
+                    <SelectItem value="ON_LEAVE">Cuti</SelectItem>
+                    <SelectItem value="RESIGNED">Resign</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -383,6 +403,32 @@ function EmployeeDetailForm({ employee }: { employee: Employee }) {
         </CardContent>
       </Card>
     </div>
+
+    <Dialog open={confirmDemote} onOpenChange={setConfirmDemote}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Konfirmasi Ubah Jabatan</DialogTitle>
+          <DialogDescription>
+            Mengubah jabatan dari MANAGER ke STAFF akan menghapus karyawan ini dari posisi manager department. Lanjutkan?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setConfirmDemote(false)}>
+            Batal
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              setConfirmDemote(false);
+              await doSubmit(values);
+            }}
+          >
+            Ya, Ubah
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </Fragment>
   );
 }
 

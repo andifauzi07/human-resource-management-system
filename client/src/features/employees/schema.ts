@@ -8,16 +8,16 @@ export const phoneSchema = z
   .string()
   .regex(/^\+?[0-9]{8,15}$/, "Nomor telepon tidak valid");
 
+export const positionEnum = z.enum(["STAFF", "MANAGER"]);
+export const statusEnum = z.enum(["PROBATION", "ACTIVE", "ON_LEAVE", "RESIGNED"]);
+
 export const employeeFormSchema = z.object({
   full_name: z
     .string()
     .min(1, "Nama wajib diisi")
     .max(150, "Nama maksimal 150 karakter"),
   department_id: z.string().uuid("Department tidak valid"),
-  position: z
-    .string()
-    .min(1, "Jabatan wajib diisi")
-    .max(100, "Jabatan maksimal 100 karakter"),
+  position: positionEnum,
   base_salary: z.coerce
     .number()
     .positive("Gaji pokok harus lebih dari 0")
@@ -25,24 +25,19 @@ export const employeeFormSchema = z.object({
   join_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD")
 });
 
-// Dialog "Ubah": field inti + data pribadi. NIK/phone divalidasi hanya saat
-// terisi (non-empty); string kosong diubah menjadi undefined sebelum dikirim.
 export const employeeEditSchema = z.object({
   full_name: z
     .string()
     .min(1, "Nama wajib diisi")
     .max(150, "Nama maksimal 150 karakter"),
   department_id: z.string().uuid("Department tidak valid"),
-  position: z
-    .string()
-    .min(1, "Jabatan wajib diisi")
-    .max(100, "Jabatan maksimal 100 karakter"),
+  position: positionEnum,
   base_salary: z.coerce
     .number()
     .positive("Gaji pokok harus lebih dari 0")
     .refine(Number.isInteger, "Gaji pokok harus bilangan bulat"),
   join_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
-  status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+  status: statusEnum.optional(),
   nik: z
     .string()
     .refine((v) => v === "" || /^\d{16}$/.test(v), "NIK harus 16 digit angka")
@@ -85,16 +80,13 @@ export const employeeDetailSchema = z.object({
     .min(1, "Nama wajib diisi")
     .max(150, "Nama maksimal 150 karakter"),
   department_id: z.string().uuid("Department tidak valid"),
-  position: z
-    .string()
-    .min(1, "Jabatan wajib diisi")
-    .max(100, "Jabatan maksimal 100 karakter"),
+  position: positionEnum,
   base_salary: z.coerce
     .number()
     .positive("Gaji pokok harus lebih dari 0")
     .refine(Number.isInteger, "Gaji pokok harus bilangan bulat"),
   join_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
-  status: z.enum(["ACTIVE", "INACTIVE"]),
+  status: statusEnum,
   nik: nikSchema,
   address: z.string().max(255, "Alamat maksimal 255 karakter").optional(),
   bank_account_number: z

@@ -3,13 +3,15 @@ import type {
   CreateEmployeeResult,
   Employee,
   EmployeeCredentials,
-  EmployeeListItem
+  EmployeeListItem,
+  EmployeePosition,
+  EmployeeStatus
 } from "./types";
 
 export interface CreateEmployeeInput {
   full_name: string;
   department_id: string;
-  position: string;
+  position: EmployeePosition;
   base_salary: number;
   join_date: string;
 }
@@ -17,10 +19,10 @@ export interface CreateEmployeeInput {
 export interface UpdateEmployeeInput {
   full_name?: string;
   department_id?: string;
-  position?: string;
+  position?: EmployeePosition;
   base_salary?: number;
   join_date?: string;
-  status?: "ACTIVE" | "INACTIVE";
+  status?: EmployeeStatus;
   nik?: string;
   address?: string;
   bank_account_number?: string;

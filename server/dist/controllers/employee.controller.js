@@ -9,10 +9,7 @@ const createEmployeeSchema = z.object({
         .min(1, "Nama lengkap wajib diisi")
         .max(150, "Nama lengkap maksimal 150 karakter"),
     department_id: z.string().uuid("Department ID harus UUID valid"),
-    position: z
-        .string()
-        .min(1, "Posisi wajib diisi")
-        .max(100, "Posisi maksimal 100 karakter"),
+    position: z.enum(["STAFF", "MANAGER"]),
     base_salary: z.number().positive("Gaji pokok harus lebih dari 0"),
     join_date: z
         .string()
@@ -25,17 +22,13 @@ const updateEmployeeSchema = z.object({
         .max(150, "Nama lengkap maksimal 150 karakter")
         .optional(),
     department_id: z.string().uuid("Department ID harus UUID valid").optional(),
-    position: z
-        .string()
-        .min(1, "Posisi wajib diisi")
-        .max(100, "Posisi maksimal 100 karakter")
-        .optional(),
+    position: z.enum(["STAFF", "MANAGER"]).optional(),
     base_salary: z.number().positive("Gaji pokok harus lebih dari 0").optional(),
     join_date: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD")
         .optional(),
-    status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
+    status: z.enum(["PROBATION", "ACTIVE", "ON_LEAVE", "RESIGNED"]).optional(),
     nik: z
         .string()
         .regex(/^\d{16}$/, "NIK harus 16 digit angka")

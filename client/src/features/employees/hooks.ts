@@ -4,6 +4,7 @@ import {
   useQueryClient
 } from "@tanstack/react-query";
 import { employeesApi } from "./api";
+import { departmentsKeys } from "@/features/departments/hooks";
 import type {
   CreateEmployeeInput,
   UpdateEmployeeInput,
@@ -81,6 +82,7 @@ export function useUpdateEmployee() {
       queryClient.invalidateQueries({ queryKey: employeesKeys.all });
       queryClient.invalidateQueries({ queryKey: employeesKeys.mine });
       queryClient.invalidateQueries({ queryKey: employeesKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: departmentsKeys.all });
     }
   });
 }
@@ -92,6 +94,7 @@ export function useDeactivateEmployee() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: employeesKeys.all });
       queryClient.invalidateQueries({ queryKey: employeesKeys.mine });
+      queryClient.invalidateQueries({ queryKey: departmentsKeys.all });
     }
   });
 }

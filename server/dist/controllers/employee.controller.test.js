@@ -18,7 +18,7 @@ function mockEmp(overrides) {
         id: "emp-1",
         department_id: "dept-1",
         full_name: "John Doe",
-        position: "Engineer",
+        position: "STAFF",
         base_salary: "5000000",
         join_date: "2026-09-01",
         nik: null,
@@ -76,7 +76,7 @@ describe("Employee Controller", () => {
                 body: {
                     full_name: "John Doe",
                     department_id: "550e8400-e29b-41d4-a716-446655440000",
-                    position: "Engineer",
+                    position: "STAFF",
                     base_salary: 5000000,
                     join_date: "2026-09-01"
                 }

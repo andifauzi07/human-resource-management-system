@@ -9,9 +9,16 @@ import {
 } from "drizzle-orm/pg-core";
 import { departmentsTable } from "./department.schema";
 
+export const employeePositionEnum = pgEnum("employee_position", [
+  "STAFF",
+  "MANAGER"
+]);
+
 export const employeeStatusEnum = pgEnum("employee_status", [
+  "PROBATION",
   "ACTIVE",
-  "INACTIVE"
+  "ON_LEAVE",
+  "RESIGNED"
 ]);
 
 export const employeesTable = pgTable("employees", {
@@ -20,7 +27,7 @@ export const employeesTable = pgTable("employees", {
     .notNull()
     .references(() => departmentsTable.id),
   full_name: varchar({ length: 150 }).notNull(),
-  position: varchar({ length: 100 }).notNull(),
+  position: employeePositionEnum().notNull().default("STAFF"),
   base_salary: decimal("base_salary", { precision: 12, scale: 2 }).notNull(),
   join_date: date("join_date").notNull(),
   nik: varchar({ length: 20 }).unique(),
@@ -28,7 +35,7 @@ export const employeesTable = pgTable("employees", {
   bank_account_number: varchar({ length: 50 }),
   bank_account_name: varchar({ length: 150 }),
   phone: varchar({ length: 20 }),
-  status: employeeStatusEnum().notNull().default("ACTIVE"),
+  status: employeeStatusEnum().notNull().default("PROBATION"),
   created_at: timestamp("created_at").defaultNow().notNull(),
   updated_at: timestamp("updated_at").defaultNow().notNull()
 });

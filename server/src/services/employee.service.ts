@@ -13,10 +13,35 @@ import { ApiError } from "../utils/api-error";
 import { hashPassword } from "../utils/auth";
 import { generateEmail, generatePassword } from "../utils/password";
 
+type Position = "STAFF" | "MANAGER";
+type EmployeeStatus = "PROBATION" | "ACTIVE" | "ON_LEAVE" | "RESIGNED";
+
+const VALID_STATUS_TRANSITIONS: Record<EmployeeStatus, EmployeeStatus[]> = {
+  PROBATION: ["ACTIVE", "RESIGNED"],
+  ACTIVE: ["ON_LEAVE", "RESIGNED"],
+  ON_LEAVE: ["ACTIVE", "RESIGNED"],
+  RESIGNED: []
+};
+
+function isProbationExpired(joinDate: string): boolean {
+  const joined = new Date(joinDate);
+  const now = new Date();
+  const diffMs = now.getTime() - joined.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  return diffDays >= 90;
+}
+
+function applyAutoTransition(emp: Employee): Employee {
+  if (emp.status === "PROBATION" && isProbationExpired(emp.join_date)) {
+    return { ...emp, status: "ACTIVE" as const };
+  }
+  return emp;
+}
+
 export interface CreateEmployeeInput {
   full_name: string;
   department_id: string;
-  position: string;
+  position: Position;
   base_salary: number;
   join_date?: string;
 }
@@ -24,10 +49,10 @@ export interface CreateEmployeeInput {
 export interface UpdateEmployeeInput {
   full_name?: string;
   department_id?: string;
-  position?: string;
+  position?: Position;
   base_salary?: number;
   join_date?: string;
-  status?: "ACTIVE" | "INACTIVE";
+  status?: EmployeeStatus;
   nik?: string;
   address?: string;
   bank_account_number?: string;
@@ -108,6 +133,21 @@ async function getEmployeeIdByUserId(userId: string): Promise<string> {
   return row.employee_id;
 }
 
+async function autoTransitionAndPersist(
+  employeeId: string,
+  currentStatus: EmployeeStatus,
+  joinDate: string
+): Promise<EmployeeStatus> {
+  if (currentStatus === "PROBATION" && isProbationExpired(joinDate)) {
+    await db
+      .update(employeesTable)
+      .set({ status: "ACTIVE", updated_at: new Date() })
+      .where(eq(employeesTable.id, employeeId));
+    return "ACTIVE";
+  }
+  return currentStatus;
+}
+
 function isUniqueViolation(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -125,7 +165,6 @@ export const employeeService = {
     const plainPassword = generatePassword();
     const passwordHash = await hashPassword(plainPassword);
 
-    // Check if email already exists
     const [existingUser] = await db
       .select()
       .from(usersTable)
@@ -136,25 +175,69 @@ export const employeeService = {
       throw ApiError.conflict("Email sudah terdaftar");
     }
 
-    // Create employee
     const join_date = input.join_date ?? new Date().toISOString().slice(0, 10);
-    const [employee] = await db
-      .insert(employeesTable)
-      .values({
-        department_id: input.department_id,
-        full_name: input.full_name,
-        position: input.position,
-        base_salary: String(input.base_salary),
-        join_date
-      })
-      .returning();
+    const position = input.position ?? "STAFF";
 
-    // Create user account
-    await db.insert(usersTable).values({
-      employee_id: employee.id,
-      email,
-      password_hash: passwordHash,
-      role: "STAFF"
+    const employee = await db.transaction(async tx => {
+      let createdEmployee: Employee;
+
+      if (position === "MANAGER") {
+        const [dept] = await tx
+          .select()
+          .from(departmentsTable)
+          .where(eq(departmentsTable.id, input.department_id))
+          .limit(1);
+
+        if (!dept) {
+          throw ApiError.notFound("Department tidak ditemukan");
+        }
+
+        if (dept.manager_id) {
+          throw ApiError.conflict(
+            "Department sudah memiliki manager. Silakan unassign manager terlebih dahulu."
+          );
+        }
+
+        const [created] = await tx
+          .insert(employeesTable)
+          .values({
+            department_id: input.department_id,
+            full_name: input.full_name,
+            position: "MANAGER",
+            base_salary: String(input.base_salary),
+            join_date
+          })
+          .returning();
+
+        await tx
+          .update(departmentsTable)
+          .set({ manager_id: created.id, updated_at: new Date() })
+          .where(eq(departmentsTable.id, input.department_id));
+
+        createdEmployee = created;
+      } else {
+        const [created] = await tx
+          .insert(employeesTable)
+          .values({
+            department_id: input.department_id,
+            full_name: input.full_name,
+            position: "STAFF",
+            base_salary: String(input.base_salary),
+            join_date
+          })
+          .returning();
+
+        createdEmployee = created;
+      }
+
+      await tx.insert(usersTable).values({
+        employee_id: createdEmployee.id,
+        email,
+        password_hash: passwordHash,
+        role: "STAFF"
+      });
+
+      return createdEmployee;
     });
 
     return {
@@ -178,7 +261,13 @@ export const employeeService = {
       throw ApiError.notFound("Employee tidak ditemukan");
     }
 
-    return employee;
+    const finalStatus = await autoTransitionAndPersist(
+      employee.id,
+      employee.status as EmployeeStatus,
+      employee.join_date
+    );
+
+    return { ...employee, status: finalStatus };
   },
 
   async getEmployeeByUserId(userId: string): Promise<EmployeeWithDepartment> {
@@ -206,7 +295,13 @@ export const employeeService = {
       throw ApiError.notFound("Employee tidak ditemukan");
     }
 
-    return employee;
+    const finalStatus = await autoTransitionAndPersist(
+      employee.id,
+      employee.status as EmployeeStatus,
+      employee.join_date
+    );
+
+    return { ...employee, status: finalStatus };
   },
 
   async listEmployees(
@@ -220,13 +315,24 @@ export const employeeService = {
     }
 
     if (userRole === "HRD") {
-      return db
+      const rows = await db
         .select(withDepartmentProjection)
         .from(employeesTable)
         .leftJoin(
           departmentsTable,
           eq(departmentsTable.id, employeesTable.department_id)
         );
+
+      const results: EmployeeWithDepartment[] = [];
+      for (const row of rows) {
+        const finalStatus = await autoTransitionAndPersist(
+          row.id,
+          row.status as EmployeeStatus,
+          row.join_date
+        );
+        results.push({ ...row, status: finalStatus });
+      }
+      return results;
     }
 
     const departmentId = await getUserDepartmentId(userId);
@@ -251,14 +357,130 @@ export const employeeService = {
       throw ApiError.notFound("Employee tidak ditemukan");
     }
 
+    const currentStatus = existing.status as EmployeeStatus;
+    const newPosition = input.position ?? (existing.position as Position);
+
+    if (input.status && input.status !== currentStatus) {
+      const allowed = VALID_STATUS_TRANSITIONS[currentStatus];
+      if (!allowed.includes(input.status)) {
+        throw ApiError.badRequest(
+          `Transisi status dari ${currentStatus} ke ${input.status} tidak diizinkan`
+        );
+      }
+    }
+
+    if (input.position && input.position !== existing.position) {
+      if (input.position === "MANAGER") {
+        if (existing.position === "MANAGER") {
+          throw ApiError.badRequest("Karyawan sudah berstatus MANAGER");
+        }
+
+        const [dept] = await db
+          .select()
+          .from(departmentsTable)
+          .where(eq(departmentsTable.id, existing.department_id))
+          .limit(1);
+
+        if (!dept) {
+          throw ApiError.notFound("Department tidak ditemukan");
+        }
+
+        if (dept.manager_id && dept.manager_id !== id) {
+          throw ApiError.conflict(
+            "Department sudah memiliki manager. Silakan unassign manager terlebih dahulu."
+          );
+        }
+
+        await db.transaction(async tx => {
+          await tx
+            .update(employeesTable)
+            .set({ position: "MANAGER", updated_at: new Date() })
+            .where(eq(employeesTable.id, id));
+
+          await tx
+            .update(departmentsTable)
+            .set({ manager_id: id, updated_at: new Date() })
+            .where(eq(departmentsTable.id, existing.department_id));
+        });
+
+        const [updated] = await db
+          .select()
+          .from(employeesTable)
+          .where(eq(employeesTable.id, id))
+          .limit(1);
+
+        return updated!;
+      }
+
+      if (input.position === "STAFF" && existing.position === "MANAGER") {
+        const [dept] = await db
+          .select()
+          .from(departmentsTable)
+          .where(eq(departmentsTable.manager_id, id))
+          .limit(1);
+
+        await db.transaction(async tx => {
+          await tx
+            .update(employeesTable)
+            .set({ position: "STAFF", updated_at: new Date() })
+            .where(eq(employeesTable.id, id));
+
+          if (dept) {
+            await tx
+              .update(departmentsTable)
+              .set({ manager_id: null, updated_at: new Date() })
+              .where(eq(departmentsTable.manager_id, id));
+          }
+        });
+
+        const [updated] = await db
+          .select()
+          .from(employeesTable)
+          .where(eq(employeesTable.id, id))
+          .limit(1);
+
+        return updated!;
+      }
+    }
+
+    if (input.department_id && input.department_id !== existing.department_id) {
+      if (existing.position === "MANAGER") {
+        const [dept] = await db
+          .select()
+          .from(departmentsTable)
+          .where(eq(departmentsTable.manager_id, id))
+          .limit(1);
+
+        const deptName = dept?.name ?? "Unknown";
+        throw ApiError.badRequest(
+          `Karyawan ${existing.full_name} adalah manager dept ${deptName}. Silakan ubah manager dept ${deptName} terlebih dahulu.`
+        );
+      }
+    }
+
     try {
       const [updated] = await db
         .update(employeesTable)
         .set({
-          ...input,
-          base_salary: input.base_salary
-            ? String(input.base_salary)
-            : undefined,
+          ...(input.full_name !== undefined && { full_name: input.full_name }),
+          ...(input.department_id !== undefined && {
+            department_id: input.department_id
+          }),
+          ...(input.position !== undefined && { position: input.position }),
+          ...(input.base_salary !== undefined && {
+            base_salary: String(input.base_salary)
+          }),
+          ...(input.join_date !== undefined && { join_date: input.join_date }),
+          ...(input.status !== undefined && { status: input.status }),
+          ...(input.nik !== undefined && { nik: input.nik }),
+          ...(input.address !== undefined && { address: input.address }),
+          ...(input.bank_account_number !== undefined && {
+            bank_account_number: input.bank_account_number
+          }),
+          ...(input.bank_account_name !== undefined && {
+            bank_account_name: input.bank_account_name
+          }),
+          ...(input.phone !== undefined && { phone: input.phone }),
           updated_at: new Date()
         })
         .where(eq(employeesTable.id, id))
@@ -313,10 +535,23 @@ export const employeeService = {
       throw ApiError.notFound("Employee tidak ditemukan");
     }
 
+    if (existing.position === "MANAGER") {
+      const [dept] = await db
+        .select()
+        .from(departmentsTable)
+        .where(eq(departmentsTable.manager_id, id))
+        .limit(1);
+
+      const deptName = dept?.name ?? "Unknown";
+      throw ApiError.badRequest(
+        `Karyawan ${existing.full_name} adalah manager dept ${deptName}. Silakan ubah manager dept ${deptName} terlebih dahulu.`
+      );
+    }
+
     await db.transaction(async tx => {
       await tx
         .update(employeesTable)
-        .set({ status: "INACTIVE", updated_at: new Date() })
+        .set({ status: "RESIGNED", updated_at: new Date() })
         .where(eq(employeesTable.id, id));
 
       await tx

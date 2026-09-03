@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { Fragment, useState, useCallback, type FormEvent } from "react";
 import { toast } from "sonner";
 import { ApiClientError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,10 @@ import type { Employee } from "../types";
 interface FormValues {
   full_name: string;
   department_id: string;
-  position: string;
+  position: "STAFF" | "MANAGER";
   base_salary: string;
   join_date: string;
-  status: "ACTIVE" | "INACTIVE";
+  status: "PROBATION" | "ACTIVE" | "ON_LEAVE" | "RESIGNED";
   nik: string;
   address: string;
   bank_account_number: string;
@@ -73,10 +73,10 @@ export function EmployeeDialog({
   const [values, setValues] = useState<FormValues>(() => ({
     full_name: employee?.full_name ?? "",
     department_id: employee?.department_id ?? "",
-    position: employee?.position ?? "",
+    position: employee?.position ?? "STAFF",
     base_salary: employee ? String(employee.base_salary) : "",
     join_date: employee?.join_date ?? "",
-    status: employee?.status ?? "ACTIVE",
+    status: employee?.status ?? "PROBATION",
     nik: employee?.nik ?? "",
     address: employee?.address ?? "",
     bank_account_number: employee?.bank_account_number ?? "",
@@ -85,6 +85,7 @@ export function EmployeeDialog({
   }));
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [confirmDemote, setConfirmDemote] = useState(false);
 
   const { data: departments, isFetching: departmentsLoading } =
     useDepartments(open);
@@ -97,10 +98,7 @@ export function EmployeeDialog({
     setFieldErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setFormError(null);
-
+  const doSubmit = useCallback(async (values: FormValues) => {
     if (isEdit && employee) {
       const parsed = employeeEditSchema.safeParse(values);
       if (!parsed.success) {
@@ -117,6 +115,7 @@ export function EmployeeDialog({
             position: parsed.data.position,
             base_salary: parsed.data.base_salary,
             join_date: parsed.data.join_date,
+            ...(parsed.data.status ? { status: parsed.data.status } : {}),
             ...(parsed.data.nik ? { nik: parsed.data.nik } : {}),
             ...(parsed.data.address ? { address: parsed.data.address } : {}),
             ...(parsed.data.bank_account_number
@@ -163,9 +162,22 @@ export function EmployeeDialog({
           : "Terjadi kesalahan, coba lagi."
       );
     }
+  }, [isEdit, employee, updateMutation, createMutation, onOpenChange, onCreated]);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+
+    if (isEdit && employee?.position === "MANAGER" && values.position === "STAFF") {
+      setConfirmDemote(true);
+      return;
+    }
+
+    await doSubmit(values);
   }
 
   return (
+    <Fragment>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -245,15 +257,22 @@ export function EmployeeDialog({
 
           <div className="grid gap-2">
             <Label htmlFor="emp-position">Jabatan</Label>
-            <Input
-              id="emp-position"
-              name="position"
-              placeholder="Jabatan / posisi"
+            <Select
               value={values.position}
-              onChange={(e) => setField("position", e.target.value)}
-              aria-invalid={Boolean(fieldErrors.position)}
-              aria-describedby={fieldErrors.position ? "emp-position-error" : undefined}
-            />
+              onValueChange={(v) => setField("position", v)}
+            >
+              <SelectTrigger
+                id="emp-position"
+                className="w-full"
+                aria-invalid={Boolean(fieldErrors.position)}
+              >
+                <SelectValue placeholder="Pilih jabatan" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="STAFF">STAFF</SelectItem>
+                <SelectItem value="MANAGER">MANAGER</SelectItem>
+              </SelectContent>
+            </Select>
             {fieldErrors.position && (
               <p id="emp-position-error" className="text-destructive text-xs">
                 {fieldErrors.position}
@@ -420,5 +439,39 @@ export function EmployeeDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={confirmDemote} onOpenChange={setConfirmDemote}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Konfirmasi Ubah Jabatan</DialogTitle>
+          <DialogDescription>
+            Mengubah jabatan dari MANAGER ke STAFF akan menghapus karyawan ini dari posisi manager department. Lanjutkan?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setConfirmDemote(false);
+            }}
+            disabled={submitting}
+          >
+            Batal
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={async () => {
+              setConfirmDemote(false);
+              await doSubmit(values);
+            }}
+            disabled={submitting}
+          >
+            {submitting && <Spinner />}
+            Ya, Ubah
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </Fragment>
   );
 }

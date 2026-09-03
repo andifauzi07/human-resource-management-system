@@ -27,7 +27,7 @@ export function useActiveEmployees(enabled = false) {
     queryFn: departmentsEmployeesApi.list,
     enabled,
     select: (employees) =>
-      employees.filter((employee) => employee.status === "ACTIVE")
+      employees.filter((employee) => employee.status === "ACTIVE" || employee.status === "PROBATION")
   });
 }
 
@@ -37,6 +37,7 @@ export function useCreateDepartment() {
     mutationFn: (input: CreateDepartmentInput) => departmentsApi.create(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: departmentsKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
     }
   });
 }
@@ -53,6 +54,7 @@ export function useUpdateDepartment() {
     }) => departmentsApi.update(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: departmentsKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
     }
   });
 }
@@ -63,6 +65,7 @@ export function useDeleteDepartment() {
     mutationFn: (id: string) => departmentsApi.remove(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: departmentsKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
     }
   });
 }

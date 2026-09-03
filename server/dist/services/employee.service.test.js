@@ -23,7 +23,7 @@ function mockEmp(overrides) {
         id: "emp-123",
         department_id: "dept-123",
         full_name: "John Doe",
-        position: "Engineer",
+        position: "STAFF",
         base_salary: "5000000",
         join_date: "2026-09-01",
         nik: null,
@@ -87,41 +87,110 @@ function mockListJoinChain(result) {
     const from = vi.fn().mockReturnValue({ leftJoin });
     return { from, _leftJoin: leftJoin };
 }
+function makeTx() {
+    return {
+        select: vi.fn(),
+        insert: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn()
+    };
+}
+function mockTxSelect(result) {
+    const limit = vi
+        .fn()
+        .mockResolvedValue(Array.isArray(result) ? result : [result]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    return { from, _limit: limit, _where: where };
+}
+function mockTxInsert(result, valuesCapture) {
+    const returning = vi
+        .fn()
+        .mockResolvedValue(Array.isArray(result) ? result : [result]);
+    const values = vi.fn().mockImplementation((v) => {
+        valuesCapture?.(v);
+        return { returning };
+    });
+    return { values };
+}
+function mockTxUpdate() {
+    const where = vi.fn().mockResolvedValue(undefined);
+    const set = vi.fn().mockReturnValue({ where });
+    return { set };
+}
 describe("Employee Service", () => {
     beforeEach(() => {
         vi.clearAllMocks();
     });
     describe("createEmployee", () => {
-        it("should create employee + user account with generated password", async () => {
+        it("should create STAFF employee + user account with generated password", async () => {
             const employee = mockEmp();
             const user = mockUser();
-            // Mock email check - no existing user
+            // Email check - no existing user (not inside tx)
             const emailCheck = mockSelectChain([]);
             mockDb.select.mockReturnValueOnce(emailCheck);
-            // Mock employee insert
-            const insertChain = {
-                values: vi.fn().mockReturnValue({
-                    returning: vi.fn().mockResolvedValue([employee])
-                })
-            };
-            mockDb.insert.mockReturnValueOnce(insertChain);
-            // Mock user insert
-            const userInsertChain = {
-                values: vi.fn().mockReturnValue({
-                    returning: vi.fn().mockResolvedValue([user])
-                })
-            };
-            mockDb.insert.mockReturnValueOnce(userInsertChain);
+            const tx = makeTx();
+            tx.insert.mockReturnValueOnce(mockTxInsert(employee));
+            tx.insert.mockReturnValueOnce(mockTxInsert(user));
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
             const result = await employeeService.createEmployee({
                 full_name: "John Doe",
                 department_id: "dept-123",
-                position: "Engineer",
+                position: "STAFF",
                 base_salary: 5000000,
                 join_date: "2026-09-01"
             });
             expect(result.employee).toEqual(employee);
             expect(result.credentials.email).toBe("john.doe@company.com");
             expect(result.credentials.password).toBe("TestPass123!");
+            expect(mockDb.transaction).toHaveBeenCalled();
+        });
+        it("should create MANAGER employee and set department manager_id", async () => {
+            const employee = mockEmp({ position: "MANAGER" });
+            const user = mockUser();
+            const dept = {
+                id: "dept-123",
+                name: "Engineering",
+                code: "ENG",
+                manager_id: null
+            };
+            const emailCheck = mockSelectChain([]);
+            mockDb.select.mockReturnValueOnce(emailCheck);
+            const tx = makeTx();
+            tx.select.mockReturnValueOnce(mockTxSelect(dept));
+            tx.insert.mockReturnValueOnce(mockTxInsert(employee));
+            tx.insert.mockReturnValueOnce(mockTxInsert(user));
+            tx.update.mockReturnValueOnce(mockTxUpdate());
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
+            const result = await employeeService.createEmployee({
+                full_name: "John Doe",
+                department_id: "dept-123",
+                position: "MANAGER",
+                base_salary: 5000000,
+                join_date: "2026-09-01"
+            });
+            expect(result.employee).toEqual(employee);
+            expect(tx.update).toHaveBeenCalled();
+        });
+        it("should throw 409 if creating MANAGER on department that already has manager", async () => {
+            const dept = {
+                id: "dept-123",
+                name: "Engineering",
+                code: "ENG",
+                manager_id: "existing-manager-id"
+            };
+            const emailCheck = mockSelectChain([]);
+            mockDb.select.mockReturnValueOnce(emailCheck);
+            const tx = makeTx();
+            tx.select.mockReturnValueOnce(mockTxSelect(dept));
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
+            await expect(employeeService.createEmployee({
+                full_name: "John Doe",
+                department_id: "dept-123",
+                position: "MANAGER",
+                base_salary: 5000000,
+                join_date: "2026-09-01"
+            })).rejects.toThrow("Department sudah memiliki manager. Silakan unassign manager terlebih dahulu.");
         });
         it("should throw error if email already exists", async () => {
             const existingUser = mockUser();
@@ -130,44 +199,34 @@ describe("Employee Service", () => {
             await expect(employeeService.createEmployee({
                 full_name: "John Doe",
                 department_id: "dept-123",
-                position: "Engineer",
+                position: "STAFF",
                 base_salary: 5000000,
                 join_date: "2026-09-01"
             })).rejects.toThrow("Email sudah terdaftar");
+            expect(mockDb.transaction).not.toHaveBeenCalled();
         });
         it("should default join_date to today when not provided", async () => {
             const employee = mockEmp();
             const user = mockUser();
             const emailCheck = mockSelectChain([]);
             mockDb.select.mockReturnValueOnce(emailCheck);
-            const valuesCapture = vi.fn();
-            const insertChain = {
-                values: vi
-                    .fn()
-                    .mockImplementation((values) => {
-                    valuesCapture(values);
-                    return {
-                        returning: vi.fn().mockResolvedValue([employee])
-                    };
-                })
-            };
-            mockDb.insert.mockReturnValueOnce(insertChain);
-            const userInsertChain = {
-                values: vi.fn().mockReturnValue({
-                    returning: vi.fn().mockResolvedValue([user])
-                })
-            };
-            mockDb.insert.mockReturnValueOnce(userInsertChain);
+            let captured;
+            const tx = makeTx();
+            tx.insert.mockReturnValueOnce(mockTxInsert(employee, v => {
+                captured = v;
+            }));
+            tx.insert.mockReturnValueOnce(mockTxInsert(user));
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
             const today = new Date().toISOString().slice(0, 10);
             await employeeService.createEmployee({
                 full_name: "John Doe",
                 department_id: "dept-123",
-                position: "Engineer",
+                position: "STAFF",
                 base_salary: 5000000
             });
-            expect(valuesCapture).toHaveBeenCalled();
-            const captured = valuesCapture.mock.calls[0][0];
-            expect(captured.join_date).toBe(today);
+            expect(captured).toBeDefined();
+            const capturedValues = captured;
+            expect(capturedValues.join_date).toBe(today);
         });
     });
     describe("getEmployeeById", () => {
@@ -194,7 +253,7 @@ describe("Employee Service", () => {
         });
         it("should return only id, full_name, position for same-department when STAFF", async () => {
             const items = [
-                { id: "emp-123", full_name: "John Doe", position: "Engineer" }
+                { id: "emp-123", full_name: "John Doe", position: "STAFF" }
             ];
             // getUserDepartmentId query
             const deptChain = mockInnerJoinChain({ department_id: "dept-123" });

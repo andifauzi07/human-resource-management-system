@@ -4,7 +4,8 @@ vi.mock("../configs/db", () => ({
         select: vi.fn(),
         insert: vi.fn(),
         update: vi.fn(),
-        delete: vi.fn()
+        delete: vi.fn(),
+        transaction: vi.fn()
     }
 }));
 import { departmentService } from "./department.service.js";
@@ -23,7 +24,7 @@ function mockDept(overrides) {
 function mockManager(overrides) {
     return {
         id: "emp-1",
-        department_id: "dept-1",
+        department_id: "dept-123",
         full_name: "Jane Manager",
         position: "Manager",
         base_salary: "10000000",
@@ -57,6 +58,34 @@ function mockListJoinChain(result) {
     const from = vi.fn().mockReturnValue({ leftJoin });
     return { from, leftJoin };
 }
+function makeTx() {
+    return {
+        select: vi.fn(),
+        insert: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn()
+    };
+}
+function txSelectChain(result) {
+    const limit = vi
+        .fn()
+        .mockResolvedValue(Array.isArray(result) ? result : [result]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    return { from, _limit: limit, _where: where };
+}
+function txInsertChain(result) {
+    const returning = vi
+        .fn()
+        .mockResolvedValue(Array.isArray(result) ? result : [result]);
+    const values = vi.fn().mockReturnValue({ returning });
+    return { values };
+}
+function txUpdateChain() {
+    const where = vi.fn().mockResolvedValue(undefined);
+    const set = vi.fn().mockReturnValue({ where });
+    return { set };
+}
 describe("Department Service", () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -77,23 +106,39 @@ describe("Department Service", () => {
         });
         it("should create department with valid active manager", async () => {
             const dept = mockDept({ manager_id: "emp-1" });
-            const manager = mockManager();
-            // validateManager query
+            const manager = mockManager({ department_id: "dept-123" });
+            // validateManagerForDepartment uses db.select (outside tx)
+            // - first select for manager lookup: returns manager with status+department_id
             const mgrChain = mockSelectChain({
                 id: manager.id,
-                status: manager.status
+                status: manager.status,
+                department_id: manager.department_id
             });
             mockDb.select.mockReturnValueOnce(mgrChain);
-            // insert
-            const insertChain = {
-                values: vi.fn().mockReturnValue({
-                    returning: vi.fn().mockResolvedValue([dept])
-                })
-            };
-            mockDb.insert.mockReturnValueOnce(insertChain);
-            // enrichWithManager query
-            const nameChain = mockSelectChain({ full_name: manager.full_name });
-            mockDb.select.mockReturnValueOnce(nameChain);
+            // - second select for existingManager: no existing department
+            const existingMgrChain = mockSelectChain([]);
+            mockDb.select.mockReturnValueOnce(existingMgrChain);
+            // db.transaction callback
+            const tx = makeTx();
+            // inside tx: existingManager select (no existing)
+            tx.select.mockReturnValueOnce(txSelectChain([]));
+            // inside tx: insert returns dept
+            tx.insert.mockReturnValueOnce(txInsertChain([dept]));
+            // inside tx: update employee position
+            tx.update.mockReturnValueOnce(txUpdateChain());
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
+            // After tx: select(withManagerProjection) join to get created dept
+            const createdChain = mockJoinSelectChain([
+                {
+                    id: dept.id,
+                    name: dept.name,
+                    manager_id: dept.manager_id,
+                    created_at: dept.created_at,
+                    updated_at: dept.updated_at,
+                    manager_name: manager.full_name
+                }
+            ]);
+            mockDb.select.mockReturnValueOnce(createdChain);
             const result = await departmentService.createDepartment({
                 name: "Engineering",
                 manager_id: "emp-1"
@@ -102,6 +147,7 @@ describe("Department Service", () => {
             expect(result.manager_name).toBe("Jane Manager");
         });
         it("should throw 400 when manager does not exist", async () => {
+            // validateManager: db.select returns empty -> "Manager tidak ditemukan"
             const mgrChain = mockSelectChain([]);
             mockDb.select.mockReturnValue(mgrChain);
             await expect(departmentService.createDepartment({
@@ -113,9 +159,13 @@ describe("Department Service", () => {
             const manager = mockManager({ status: "INACTIVE" });
             const mgrChain = mockSelectChain({
                 id: manager.id,
-                status: manager.status
+                status: manager.status,
+                department_id: manager.department_id
             });
             mockDb.select.mockReturnValue(mgrChain);
+            // transaction must execute the callback so validateManager runs
+            const tx = makeTx();
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
             await expect(departmentService.createDepartment({
                 name: "Engineering",
                 manager_id: "emp-1"
@@ -172,7 +222,6 @@ describe("Department Service", () => {
     describe("updateDepartment", () => {
         it("should update department fields and return manager_name", async () => {
             const existing = mockDept();
-            const updated = mockDept({ name: "Updated" });
             // getDepartmentById (join select)
             const selectChain = mockJoinSelectChain([
                 {
@@ -185,20 +234,30 @@ describe("Department Service", () => {
                 }
             ]);
             mockDb.select.mockReturnValueOnce(selectChain);
-            // update
-            const updateChain = {
-                set: vi.fn().mockReturnValue({
-                    where: vi.fn().mockReturnValue({
-                        returning: vi.fn().mockResolvedValue([updated])
-                    })
-                })
-            };
-            mockDb.update.mockReturnValue(updateChain);
-            // enrichWithManager (no manager -> no extra query)
+            // transaction flow for name update (no manager change)
+            const tx = makeTx();
+            // inside tx: select current dept
+            tx.select.mockReturnValueOnce(txSelectChain([existing]));
+            // inside tx: update dept table
+            tx.update.mockReturnValueOnce(txUpdateChain());
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
+            // after tx: return this.getDepartmentById(id) again (join select)
+            const finalChain = mockJoinSelectChain([
+                {
+                    id: existing.id,
+                    name: "Updated",
+                    manager_id: existing.manager_id,
+                    manager_name: null,
+                    created_at: existing.created_at,
+                    updated_at: existing.updated_at
+                }
+            ]);
+            mockDb.select.mockReturnValueOnce(finalChain);
             const result = await departmentService.updateDepartment("dept-123", {
                 name: "Updated"
             });
-            expect(result).toEqual({ ...updated, manager_name: null });
+            expect(result.name).toBe("Updated");
+            expect(result.manager_name).toBeNull();
         });
         it("should throw 400 when updating to INACTIVE manager", async () => {
             const existing = mockDept();
@@ -213,14 +272,20 @@ describe("Department Service", () => {
                 }
             ]);
             mockDb.select.mockReturnValueOnce(selectChain);
-            const manager = mockManager({ status: "INACTIVE" });
-            const mgrChain = mockSelectChain({
-                id: manager.id,
-                status: manager.status
-            });
-            mockDb.select.mockReturnValueOnce(mgrChain);
+            // transaction flow
+            const tx = makeTx();
+            tx.select.mockReturnValueOnce(txSelectChain([existing]));
+            // inside tx: select manager (returns INACTIVE)
+            tx.select.mockReturnValueOnce(txSelectChain([
+                {
+                    id: "emp-1",
+                    status: "INACTIVE",
+                    department_id: "dept-123"
+                }
+            ]));
+            mockDb.transaction.mockImplementation(async (cb) => cb(tx));
             await expect(departmentService.updateDepartment("dept-123", {
-                manager_id: manager.id
+                manager_id: "emp-1"
             })).rejects.toThrow("Manager harus berstatus ACTIVE");
         });
     });

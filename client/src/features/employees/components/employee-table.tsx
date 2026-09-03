@@ -44,13 +44,29 @@ const columns: DataTableColumn<Employee>[] = [
     header: "Status",
     type: "category",
     filterable: true,
-    getValue: (e) => (e.status === "ACTIVE" ? "Aktif" : "Nonaktif"),
-    render: (e) => (
-      <StatusBadge
-        status={e.status}
-        label={e.status === "ACTIVE" ? "Aktif" : "Nonaktif"}
-      />
-    )
+    getValue: (e) => {
+      switch (e.status) {
+        case "PROBATION": return "Probation";
+        case "ACTIVE": return "Aktif";
+        case "ON_LEAVE": return "Cuti";
+        case "RESIGNED": return "Resign";
+        default: return e.status;
+      }
+    },
+    render: (e) => {
+      const labelMap: Record<string, string> = {
+        PROBATION: "Probation",
+        ACTIVE: "Aktif",
+        ON_LEAVE: "Cuti",
+        RESIGNED: "Resign"
+      };
+      return (
+        <StatusBadge
+          status={e.status}
+          label={labelMap[e.status] ?? e.status}
+        />
+      );
+    }
   }
 ];
 

@@ -6,6 +6,7 @@ export interface EmployeeListItem {
   id: string;
   full_name: string;
   position: EmployeePosition;
+  status: EmployeeStatus;
 }
 
 export interface EmployeeDepartment {

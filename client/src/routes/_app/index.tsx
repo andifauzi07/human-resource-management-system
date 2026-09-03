@@ -13,6 +13,7 @@ import {
   CardTitle
 } from "@/components/ui/card";
 import { useDepartments } from "@/features/departments/hooks";
+import { useEmployees } from "@/features/employees/hooks";
 
 export const Route = createFileRoute("/_app/")({
   component: DashboardPage
@@ -23,14 +24,20 @@ function DashboardPage() {
   const isHRD = user?.role === "HRD";
   const { data: departments, isLoading: departmentsLoading } =
     useDepartments(isHRD);
+  const { data: employees, isLoading: employeesLoading } = useEmployees();
 
   const departmentValue = departmentsLoading
     ? <Skeleton className="h-7 w-10" />
     : String(departments?.length ?? 0);
 
+  const activeEmployees = employees?.filter((e) => e.status !== "RESIGNED");
+  const employeeValue = employeesLoading
+    ? <Skeleton className="h-7 w-10" />
+    : String(activeEmployees?.length ?? 0);
+
   const stats = isHRD
     ? [
-        { label: "Karyawan", value: "--", icon: Users, hint: "Modul menyusul" },
+        { label: "Karyawan", value: employeeValue, icon: Users, hint: "Total karyawan" },
         { label: "Cuti", value: "--", icon: CalendarDays, hint: "Menunggu persetujuan" },
         { label: "Absensi", value: "--", icon: MapPin, hint: "Kehadiran hari ini" },
         { label: "Department", value: departmentValue, icon: Building2, hint: "Struktur organisasi" }

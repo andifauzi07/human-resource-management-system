@@ -22,7 +22,8 @@ export const employeeFormSchema = z.object({
     .number()
     .positive("Gaji pokok harus lebih dari 0")
     .refine(Number.isInteger, "Gaji pokok harus bilangan bulat"),
-  join_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD")
+  join_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal: YYYY-MM-DD"),
+  status: statusEnum
 });
 
 export const employeeEditSchema = z.object({

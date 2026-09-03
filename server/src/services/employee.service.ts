@@ -44,6 +44,7 @@ export interface CreateEmployeeInput {
   position: Position;
   base_salary: number;
   join_date?: string;
+  status?: EmployeeStatus;
 }
 
 export interface UpdateEmployeeInput {
@@ -177,6 +178,7 @@ export const employeeService = {
 
     const join_date = input.join_date ?? new Date().toISOString().slice(0, 10);
     const position = input.position ?? "STAFF";
+    const status = input.status ?? "PROBATION";
 
     const employee = await db.transaction(async tx => {
       let createdEmployee: Employee;
@@ -205,7 +207,8 @@ export const employeeService = {
             full_name: input.full_name,
             position: "MANAGER",
             base_salary: String(input.base_salary),
-            join_date
+            join_date,
+            status
           })
           .returning();
 
@@ -223,7 +226,8 @@ export const employeeService = {
             full_name: input.full_name,
             position: "STAFF",
             base_salary: String(input.base_salary),
-            join_date
+            join_date,
+            status
           })
           .returning();
 

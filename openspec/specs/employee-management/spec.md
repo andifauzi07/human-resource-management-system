@@ -24,7 +24,7 @@ Kelola data karyawan HRIS: CRUD employee, auto-generate email/password, soft del
 3. User account dibuat otomatis dengan role STAFF saat create employee
 4. STAFF hanya dapat melihat daftar karyawan di department yang sama, dan hanya menerima field `id`, `full_name`, `position` (tanpa `base_salary`, `status`, `join_date`, maupun objek `department`)
 5. Field `position` SHALL diimplementasikan sebagai enum dengan nilai `STAFF` dan `MANAGER` di level database, bukan free-text varchar. Nilai default saat pembuatan karyawan adalah `STAFF`.
-6. Field `status` karyawan SHALL mengikuti salah satu dari nilai enum: `PROBATION`, `ACTIVE`, `ON_LEAVE`, atau `RESIGNED`. Nilai default saat pembuatan karyawan adalah `PROBATION`. Sistem SHALL menolak transisi `ACTIVE` → `PROBATION` karena status probation hanya boleh terjadi satu kali seumur hidup karyawan.
+6. Field `status` karyawan SHALL mengikuti salah satu dari nilai enum: `PROBATION`, `ACTIVE`, `ON_LEAVE`, atau `RESIGNED`. HRD DAPAT menentukan status awal karyawan saat pembuatan melalui field opsional `status` pada `POST /employees`; jika tidak disertakan, status default ke `PROBATION`. Sistem SHALL menolak transisi `ACTIVE` → `PROBATION` karena status probation hanya boleh terjadi satu kali seumur hidup karyawan.
 7. Saat soft delete (`DELETE /employees/:id`), status karyawan diubah menjadi `RESIGNED` dan `departments.manager_id` yang menunjuk ke karyawan tersebut di-set `null` di seluruh department. Sistem SHALL menolak deactivation untuk karyawan yang berstatus `MANAGER` (HRD harus mengganti manager department terlebih dahulu).
 8. `GET /employees/:id` khusus HRD; STAFF mengakses profilnya sendiri hanya melalui `GET /employees/mine`
 9. Objek `department: { id, name }` hasil JOIN disertakan pada response HRD untuk `GET /employees` dan `GET /employees/:id`, serta pada `GET /employees/mine` untuk semua role. Response list STAFF (`GET /employees`) TIDAK menyertakannya.
@@ -48,7 +48,7 @@ Field `position` karyawan SHALL diimplementasikan sebagai enum dengan nilai `STA
 - **THEN** sistem menolak request dengan error 400
 
 ### Requirement: Employee status lifecycle
-Field `status` karyawan SHALL mengikuti salah satu dari nilai enum: `PROBATION`, `ACTIVE`, `ON_LEAVE`, atau `RESIGNED`. Nilai default saat pembuatan karyawan adalah `PROBATION`. Transisi status mengikuti aturan sebagai berikut:
+Field `status` karyawan SHALL mengikuti salah satu dari nilai enum: `PROBATION`, `ACTIVE`, `ON_LEAVE`, atau `RESIGNED`. HRD DAPAT menentukan status awal karyawan saat pembuatan melalui field opsional `status` pada `POST /employees`. Jika tidak disertakan, status default ke `PROBATION`. Transisi status mengikuti aturan sebagai berikut:
 - `PROBATION` → `ACTIVE` (otomatis setelah 3 bulan dari `join_date`, dihitung saat query)
 - `PROBATION` → `RESIGNED`
 - `ACTIVE` → `ON_LEAVE`
@@ -61,6 +61,10 @@ Sistem SHALL menolak transisi `ACTIVE` → `PROBATION` karena status probation h
 #### Scenario: Karyawan baru default PROBATION
 - **WHEN** HRD membuat karyawan baru tanpa menentukan status
 - **THEN** sistem men-set status karyawan ke `PROBATION`
+
+#### Scenario: Karyawan baru dengan status ditentukan
+- **WHEN** HRD membuat karyawan baru dengan field `status` diisi (misal `ACTIVE`)
+- **THEN** sistem membuat karyawan dengan status sesuai nilai yang diberikan
 
 #### Scenario: Auto-transisi PROBATION ke ACTIVE setelah 3 bulan
 - **WHEN** sistem mengambil data karyawan yang berstatus `PROBATION` dan `join_date` sudah lebih dari 90 hari (3 bulan) dari tanggal hari ini

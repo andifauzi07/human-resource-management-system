@@ -17,6 +17,7 @@ interface FormValues {
   full_name: string;
   department_id: string;
   position: "STAFF" | "MANAGER";
+  status: "PROBATION" | "ACTIVE" | "ON_LEAVE" | "RESIGNED";
   base_salary: string;
   join_date: string;
 }
@@ -27,6 +28,7 @@ const editableFields: Array<keyof FormValues> = [
   "full_name",
   "department_id",
   "position",
+  "status",
   "base_salary",
   "join_date"
 ];
@@ -62,6 +64,7 @@ export function EmployeeDialog({
     full_name: employee?.full_name ?? "",
     department_id: employee?.department_id ?? "",
     position: employee?.position ?? "STAFF",
+    status: employee?.status ?? "PROBATION",
     base_salary: employee ? String(employee.base_salary) : "",
     join_date: employee?.join_date ?? ""
   }));
@@ -96,7 +99,8 @@ export function EmployeeDialog({
             department_id: parsed.data.department_id,
             position: parsed.data.position,
             base_salary: parsed.data.base_salary,
-            join_date: parsed.data.join_date
+            join_date: parsed.data.join_date,
+            status: parsed.data.status
           }
         });
         toast.success("Employee berhasil diperbarui");
@@ -123,7 +127,8 @@ export function EmployeeDialog({
         department_id: parsed.data.department_id,
         position: parsed.data.position,
         base_salary: parsed.data.base_salary,
-        join_date: parsed.data.join_date
+        join_date: parsed.data.join_date,
+        status: parsed.data.status
       });
       onOpenChange(false);
       onCreated?.(result);
@@ -248,6 +253,33 @@ export function EmployeeDialog({
             {fieldErrors.position && (
               <p id="emp-position-error" className="text-destructive text-xs">
                 {fieldErrors.position}
+              </p>
+            )}
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="emp-status">Status</Label>
+            <Select
+              value={values.status}
+              onValueChange={(v) => setField("status", v)}
+            >
+              <SelectTrigger
+                id="emp-status"
+                className="w-full"
+                aria-invalid={Boolean(fieldErrors.status)}
+              >
+                <SelectValue placeholder="Pilih status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PROBATION">PROBATION</SelectItem>
+                <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                <SelectItem value="ON_LEAVE">ON_LEAVE</SelectItem>
+                <SelectItem value="RESIGNED">RESIGNED</SelectItem>
+              </SelectContent>
+            </Select>
+            {fieldErrors.status && (
+              <p id="emp-status-error" className="text-destructive text-xs">
+                {fieldErrors.status}
               </p>
             )}
           </div>

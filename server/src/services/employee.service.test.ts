@@ -275,6 +275,65 @@ describe("Employee Service", () => {
       const capturedValues = captured as Record<string, unknown>;
       expect(capturedValues.join_date).toBe(today);
     });
+
+    it("should pass custom status to insert values when provided", async () => {
+      const employee = mockEmp({ status: "ACTIVE" });
+      const user = mockUser();
+
+      const emailCheck = mockSelectChain([]);
+      mockDb.select.mockReturnValueOnce(emailCheck as never);
+
+      let captured: unknown;
+      const tx = makeTx();
+      tx.insert.mockReturnValueOnce(
+        mockTxInsert(employee, v => {
+          captured = v;
+        })
+      );
+      tx.insert.mockReturnValueOnce(mockTxInsert(user));
+      mockDb.transaction.mockImplementation(async cb => cb(tx as never));
+
+      await employeeService.createEmployee({
+        full_name: "John Doe",
+        department_id: "dept-123",
+        position: "STAFF",
+        base_salary: 5000000,
+        join_date: "2026-09-01",
+        status: "ACTIVE"
+      });
+
+      const capturedValues = captured as Record<string, unknown>;
+      expect(capturedValues.status).toBe("ACTIVE");
+    });
+
+    it("should default status to PROBATION when not provided", async () => {
+      const employee = mockEmp();
+      const user = mockUser();
+
+      const emailCheck = mockSelectChain([]);
+      mockDb.select.mockReturnValueOnce(emailCheck as never);
+
+      let captured: unknown;
+      const tx = makeTx();
+      tx.insert.mockReturnValueOnce(
+        mockTxInsert(employee, v => {
+          captured = v;
+        })
+      );
+      tx.insert.mockReturnValueOnce(mockTxInsert(user));
+      mockDb.transaction.mockImplementation(async cb => cb(tx as never));
+
+      await employeeService.createEmployee({
+        full_name: "John Doe",
+        department_id: "dept-123",
+        position: "STAFF",
+        base_salary: 5000000,
+        join_date: "2026-09-01"
+      });
+
+      const capturedValues = captured as Record<string, unknown>;
+      expect(capturedValues.status).toBe("PROBATION");
+    });
   });
 
   describe("getEmployeeById", () => {

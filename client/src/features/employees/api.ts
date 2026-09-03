@@ -14,6 +14,7 @@ export interface CreateEmployeeInput {
   position: EmployeePosition;
   base_salary: number;
   join_date: string;
+  status?: EmployeeStatus;
 }
 
 export interface UpdateEmployeeInput {
